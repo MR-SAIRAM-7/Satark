@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react';
 import { useAlerts, useDrills, useIntel } from './activity';
 import { useChecks } from './checks';
 import { useComplaints } from './complaints';
+import { useLangPacks } from './langPacks';
 import { useSettings } from './settings';
 
-const stores = [useSettings, useChecks, useAlerts, useIntel, useDrills, useComplaints];
+const stores = [useSettings, useChecks, useAlerts, useIntel, useDrills, useComplaints, useLangPacks];
 
 /** Resolves once every persisted store has loaded from disk. */
 export function whenHydrated(): Promise<void> {

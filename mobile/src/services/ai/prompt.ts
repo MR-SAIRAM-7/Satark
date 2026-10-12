@@ -1,4 +1,4 @@
-import type { AnalyzeRequest } from '@satark/shared';
+import { LANGUAGES, type AnalyzeRequest } from '@satark/shared';
 
 /**
  * Layer 4 prompt. The message is passed as quoted data and the model is told
@@ -37,9 +37,12 @@ Explanations: two short sentences each, in plain words a 70-year-old understands
 Scores: 0-39 safe, 40-69 suspicious, 70-100 scam. Genuine OTP, debit, bill and delivery messages from registered senders are safe.`;
 
 export function buildUserPrompt(req: AnalyzeRequest): string {
+  // The contract always carries en, hi and te. For any other chosen language, ask for it too.
+  const extra = LANGUAGES.find((l) => l.code === req.lang && !l.ui);
   const facts = [
     `source: ${req.source}`,
     `sender: ${req.sender ?? 'unknown'}`,
+    extra ? `also add "${extra.code}" to "explanation", written in ${extra.english} script` : null,
     req.context?.on_call ? 'the user is on a call right now' : null,
     req.context?.local_rules?.length ? `on-device rules fired: ${req.context.local_rules.join(', ')}` : null,
     req.context?.local_rule_score != null ? `on-device rule score: ${req.context.local_rule_score}` : null,

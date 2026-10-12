@@ -124,11 +124,14 @@ export function advanceThread(thread: ThreadState, evidence: readonly Evidence[]
  */
 export function toResponse(
   local: LocalAnalysis,
-  overrides: { thread?: ThreadState; community?: number } = {},
+  overrides: { thread?: ThreadState; community?: number; scamType?: ScamType } = {},
 ): AnalyzeResponse {
   const evidence = overrides.thread?.evidence ?? local.evidence;
   const stage = overrides.thread?.stage ?? local.stage;
   const community = overrides.community ?? 0;
+  // A later message in a conversation ("transfer the amount now") may not name the
+  // scam on its own; it inherits the type the conversation already established.
+  const scamType = local.scamType === 'unknown' ? (overrides.scamType ?? 'unknown') : local.scamType;
   const layer_scores = {
     rules: local.ruleScore,
     killChain: Math.max(local.killChainScore, overrides.thread?.score ?? 0),
@@ -138,12 +141,12 @@ export function toResponse(
   };
   const score = fuseScores(layer_scores);
   const verdict = verdictFor(score);
-  const info = SCAM_TYPES[local.scamType];
+  const info = SCAM_TYPES[scamType];
 
   return {
     verdict,
     score,
-    scam_type: local.scamType,
+    scam_type: scamType,
     stage,
     evidence,
     tactics: local.tactics,

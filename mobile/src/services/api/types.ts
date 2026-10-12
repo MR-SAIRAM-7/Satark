@@ -43,6 +43,12 @@ export interface SatarkApi {
   /** Text to speech (Sarvam Bulbul). Base64 WAV, or null to use the phone's own voice. */
   tts(text: string, lang: LangCode): Promise<string | null>;
 
+  /**
+   * English -> the user's language (Sarvam Mayura). One result per input, `null`
+   * for any string that could not be translated; `null` overall when unavailable.
+   */
+  translate(texts: string[], lang: LangCode): Promise<(string | null)[] | null>;
+
   /** Speech to text for one Home Guardian audio chunk. Null when unavailable. */
   listen(fileUri: string, sessionId: string): Promise<ListenResult | null>;
 

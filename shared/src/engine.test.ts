@@ -74,6 +74,27 @@ describe('layer 2: India rules', () => {
     expect(thread.score).toBeGreaterThanOrEqual(85);
   });
 
+  it('keeps the first quote per stage and the conversation type as messages arrive', () => {
+    const opener = analyzeLocal({
+      source: 'whatsapp',
+      sender: '+91 98480 12345',
+      text: 'This is Mumbai Police. Your Aadhaar is linked to money laundering.',
+    });
+    const followUp = analyzeLocal({
+      source: 'whatsapp',
+      sender: '+91 98480 12345',
+      text: 'Transfer the amount to the RBI verification account today. UPI: rbi.verify2026@ybl.',
+    });
+    // A UPI ID before a full stop is still found, and an "official-looking" one still fires R8.
+    expect(followUp.upis.map((u) => u.vpa)).toEqual(['rbi.verify2026@ybl']);
+    expect(followUp.rules.map((r) => r.id)).toContain('R8');
+    expect(followUp.scamType).toBe('unknown');
+
+    const thread = advanceThread(advanceThread(EMPTY_THREAD, opener.evidence, opener.score), followUp.evidence, followUp.score);
+    expect(thread.evidence.find((e) => e.stage === 2)?.quote).toBe('This is Mumbai Police');
+    expect(toResponse(followUp, { thread, scamType: opener.scamType }).scam_type).toBe('digital_arrest');
+  });
+
   it('R1 + R4: KYC message from a mobile number with a look-alike link', () => {
     const ids = ruleIds(
       'Dear customer your SBI YONO account will be blocked today. Update your PAN: http://sbi-kyc-update.xyz/login',

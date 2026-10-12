@@ -125,8 +125,15 @@ export async function processIncoming(item: IncomingItem, options: ProcessOption
 
   const id = newId('ck');
   const threadId = threadIdFor(item, id);
-  const thread = useChecks.getState().advance(threadId, item.sender ?? null, local.evidence, local.score, id);
-  const base = toResponse(local, { thread, community: community.score });
+  const thread = useChecks.getState().advance({
+    threadId,
+    sender: item.sender ?? null,
+    evidence: local.evidence,
+    score: local.score,
+    scamType: local.scamType,
+    checkId: id,
+  });
+  const base = toResponse(local, { thread, community: community.score, scamType: thread.scamType });
 
   const maskedText = mask(local.cleaned.text);
   const request: AnalyzeRequest = {

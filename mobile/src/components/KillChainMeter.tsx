@@ -48,7 +48,10 @@ export function KillChainMeter({ stage, evidence, tone, onDark, compact }: KillC
       <View style={styles.stages}>
         {STAGES.map((def, index) => {
           const reached = def.stage <= stage;
-          const proof = evidence.find((e) => e.stage === def.stage);
+          const found = evidence.find((e) => e.stage === def.stage);
+          // One sentence can prove two stages; show it once, under the later stage.
+          const repeated = found && evidence.some((e) => e.stage > def.stage && e.quote === found.quote);
+          const proof = repeated ? undefined : found;
           return (
             <StageRow
               key={def.stage}

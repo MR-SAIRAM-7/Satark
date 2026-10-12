@@ -71,6 +71,19 @@ export const httpApi: SatarkApi = {
     }
   },
 
+  async translate(texts, lang) {
+    try {
+      const data = await request<{ texts?: (string | null)[] }>(
+        '/translate',
+        { method: 'POST', body: JSON.stringify({ texts, lang }) },
+        30000,
+      );
+      return data.texts ?? null;
+    } catch {
+      return null;
+    }
+  },
+
   async listen(fileUri, sessionId) {
     const form = new FormData();
     form.append('audio', { uri: fileUri, name: 'chunk.wav', type: 'audio/wav' } as unknown as Blob);

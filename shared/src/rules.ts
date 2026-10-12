@@ -83,10 +83,13 @@ export function evaluateRules({ cleaned, signals: s, sender, source, context }: 
   const claimed = s.brand && !['payments', 'commerce'].includes(s.brand.kind) ? s.brand : null;
   const asksToPay = Boolean(s.payment || s.collect || source === 'qr' || s.upis.some((u) => u.amount));
   if (stranger && asksToPay && (claimed || s.authority)) {
+    // Police, courts, RBI and other authorities never take payment to a UPI ID in a message,
+    // so for them any UPI ID is a mismatch, even one named to look official ("rbi.verify@ybl").
+    const official = Boolean(s.authority) || claimed?.kind === 'government';
     const keys = claimed ? [...claimed.keys, ...claimed.names] : [];
     const mismatch = s.upis.find((u) => {
       const haystack = `${u.vpa} ${u.payeeName ?? ''}`.toLowerCase();
-      return u.personal || !keys.some((k) => haystack.includes(k.toLowerCase()));
+      return official || u.personal || !keys.some((k) => haystack.includes(k.toLowerCase()));
     });
     if (mismatch) add('R8', mismatch.vpa);
   }

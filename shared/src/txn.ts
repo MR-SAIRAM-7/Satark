@@ -27,7 +27,7 @@ const CREDIT_RE = /\b(credited|credit|received|deposited|refunded|cr\.?)\b/i;
 const REF_RE =
   /(?:utr|rrn|upi\s*ref(?:erence)?(?:\s*no\.?)?|ref(?:erence)?\s*(?:no\.?|number|id)?|refno|txn\s*(?:id|no\.?)|transaction\s*id)\s*[:.\-#]?\s*([a-z0-9]{8,22})/i;
 const ACCOUNT_RE = /(?:a\/c|ac|acct|account|card)(?:\s*(?:no\.?|number|ending|ending with))?\s*[:.]?\s*[x*]*\s*(\d{3,6})\b/i;
-const VPA_RE = /([a-z0-9][a-z0-9._-]{1,48}@[a-z][a-z0-9]{1,20})(?![\w.])/i;
+const VPA_RE = /([a-z0-9][a-z0-9._-]{1,48}@[a-z][a-z0-9]{1,20})(?!\w|\.\w)/i;
 const PAYEE_RE = /(?:trf to|transfer to|paid to|sent to|to)\s+([A-Za-z][A-Za-z0-9 .&'-]{2,40}?)(?=\s+(?:on|ref|refno|upi|utr|via|at|avl|bal)\b|[.,;]|$)/i;
 
 const BANK_BRANDS = rules.brands.filter((b) => b.kind === 'bank');

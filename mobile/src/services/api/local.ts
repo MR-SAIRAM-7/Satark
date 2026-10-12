@@ -3,6 +3,7 @@ import { raiseWith } from '@satark/shared';
 import { hasDirectLlm } from '@/config/env';
 import { runLlmChain } from '@/services/ai/chain';
 import { sarvamStt, sarvamTts } from '@/services/ai/providers';
+import { sarvamTranslateMany } from '@/services/ai/translate';
 
 import type { SatarkApi } from './types';
 
@@ -25,6 +26,14 @@ export const localApi: SatarkApi = {
   async tts(text, lang) {
     try {
       return await sarvamTts(text, lang);
+    } catch {
+      return null;
+    }
+  },
+
+  async translate(texts, lang) {
+    try {
+      return await sarvamTranslateMany(texts, lang);
     } catch {
       return null;
     }

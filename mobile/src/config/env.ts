@@ -27,6 +27,7 @@ export const env = {
     ttsModel: read(process.env.EXPO_PUBLIC_SARVAM_TTS_MODEL, 'bulbul:v3'),
     ttsSpeaker: read(process.env.EXPO_PUBLIC_SARVAM_TTS_SPEAKER, 'shubh'),
     sttModel: read(process.env.EXPO_PUBLIC_SARVAM_STT_MODEL, 'saaras:v3'),
+    translateModel: read(process.env.EXPO_PUBLIC_SARVAM_TRANSLATE_MODEL, 'mayura:v1'),
   },
 
   /** Number the "forward to Satark" WhatsApp bot answers on (Twilio sandbox during the hackathon). */

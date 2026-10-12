@@ -3,9 +3,7 @@ import {
   analyzeLocal,
   getRule,
   maskPhone,
-  pickLang,
   SCAM_TYPES,
-  uiLangFor,
   voiceLineFor,
   type RuleHit,
 } from '@satark/shared';
@@ -13,7 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DemoBanner } from '@/components/DemoBanner';
@@ -75,14 +73,17 @@ export default function VerdictScreen() {
   const { verdict, scam_type, score } = response;
   const palette = verdictPalette[verdict];
   const risky = verdict !== 'safe';
-  const ui = uiLangFor(lang);
 
   // The open alert follows the conversation: the meter climbs as new messages arrive.
   const evidence = thread && thread.stage >= response.stage ? thread.evidence : response.evidence;
   const stage = thread && thread.stage >= response.stage ? thread.stage : response.stage;
 
-  const explanation = pickLang(response.explanation, lang);
-  const advice = ui === 'en' ? response.advice : (response.advice_l10n?.[ui] ?? response.advice);
+  // Telugu and Hindi come with the verdict; any other chosen language is translated by Sarvam.
+  const explanation = localized(response.explanation);
+  const advice =
+    lang === 'hi' || lang === 'te'
+      ? (response.advice_l10n?.[lang] ?? response.advice)
+      : response.advice.map((step) => localized(step));
   const brand = local.links.find((l) => l.lookalikeOf)?.lookalikeOf ?? local.signals.brand;
   const realEntry = entryForBrand(brand?.id) ?? (local.signals.authority ? HELPLINE_1930 : undefined);
   const askSafeWord = response.rules.some((r) => r.id === 'R16');
@@ -162,19 +163,17 @@ export default function VerdictScreen() {
           )
         }>
         {response.injection_attempt ? (
-          <Animated.View entering={FadeInDown.delay(80)}>
-            <Card tone={{ main: colors.danger, soft: colors.dangerSoft }} style={styles.banner}>
-              <IconBadge name="bug" color={colors.danger} soft={colors.surface} />
-              <View style={styles.flex}>
-                <AppText variant="bodyStrong" color={colors.dangerDeep}>
-                  {t('verdict.injection')}
-                </AppText>
-                <AppText variant="label" color={colors.textMuted}>
-                  {t('verdict.injection.body')}
-                </AppText>
-              </View>
-            </Card>
-          </Animated.View>
+          <Card tone={{ main: colors.danger, soft: colors.dangerSoft }} style={styles.banner}>
+            <IconBadge name="bug" color={colors.danger} soft={colors.surface} />
+            <View style={styles.flex}>
+              <AppText testID="injection-banner" variant="bodyStrong" color={colors.dangerDeep}>
+                {t('verdict.injection')}
+              </AppText>
+              <AppText variant="label" color={colors.textMuted}>
+                {t('verdict.injection.body')}
+              </AppText>
+            </View>
+          </Card>
         ) : null}
 
         {verdict === 'scam' && guardian ? (

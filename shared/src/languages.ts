@@ -1,12 +1,16 @@
 /**
- * Language registry. `ui: true` languages have a full interface translation;
- * the rest get voice warnings and server-translated explanations through Sarvam,
- * with the interface falling back to English. Add a row here to add a language.
+ * Language registry: English plus the ten Indian languages Sarvam AI supports
+ * for translation (Mayura) and speech (Bulbul). English is the default.
+ *
+ * `ui: true` languages ship a reviewed interface translation in the app, so they
+ * work offline from the first launch. Every other language is translated by
+ * Sarvam the first time the user picks it, then cached on the phone.
+ * Add a row here to add a language.
  */
 export const LANGUAGES = [
+  { code: 'en', bcp47: 'en-IN', native: 'English', english: 'English', ui: true },
   { code: 'te', bcp47: 'te-IN', native: 'తెలుగు', english: 'Telugu', ui: true },
   { code: 'hi', bcp47: 'hi-IN', native: 'हिन्दी', english: 'Hindi', ui: true },
-  { code: 'en', bcp47: 'en-IN', native: 'English', english: 'English', ui: true },
   { code: 'ta', bcp47: 'ta-IN', native: 'தமிழ்', english: 'Tamil', ui: false },
   { code: 'kn', bcp47: 'kn-IN', native: 'ಕನ್ನಡ', english: 'Kannada', ui: false },
   { code: 'ml', bcp47: 'ml-IN', native: 'മലയാളം', english: 'Malayalam', ui: false },
@@ -20,8 +24,13 @@ export const LANGUAGES = [
 export type LangCode = (typeof LANGUAGES)[number]['code'];
 export type UiLang = 'te' | 'hi' | 'en';
 
-export const DEFAULT_LANG: LangCode = 'te';
-export const UI_LANGS: readonly UiLang[] = ['te', 'hi', 'en'];
+export const DEFAULT_LANG: LangCode = 'en';
+export const UI_LANGS: readonly UiLang[] = ['en', 'te', 'hi'];
+
+/** True when the interface for this language comes from Sarvam rather than the app bundle. */
+export function isTranslatedBySarvam(code: LangCode): boolean {
+  return !UI_LANGS.includes(code as UiLang);
+}
 
 export function getLanguage(code: LangCode) {
   return LANGUAGES.find((l) => l.code === code) ?? LANGUAGES[0];

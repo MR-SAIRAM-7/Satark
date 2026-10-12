@@ -11,6 +11,7 @@ import { seedCommunityIntel } from '@/features/demo/seed';
 import { tNow } from '@/i18n';
 import { SatarkNative } from '@/services/native';
 import { initNotifications, onNotificationTap } from '@/services/notifications';
+import { ensureLanguagePack } from '@/services/translation';
 import { useIntel } from '@/store/activity';
 import { useSettings } from '@/store/settings';
 import { useUi } from '@/store/ui';
@@ -31,6 +32,11 @@ export function AppBridge() {
     syncCommunity();
     registerBackgroundSync();
   }, []);
+
+  // Fetch (or top up) Sarvam's translation of the interface for the chosen language.
+  useEffect(() => {
+    ensureLanguagePack(lang);
+  }, [lang]);
 
   // Foreground service and native listeners, once the user has finished onboarding.
   useEffect(() => {

@@ -77,7 +77,9 @@ export default function ComplaintScreen() {
   }
 
   const person = { name: settings.elder.name, locality: settings.elder.locality, lang: settings.lang };
-  const script = buildScript(complaint, settings.lang);
+  // Built in English, Telugu or Hindi; Sarvam translates it for any other chosen language.
+  const script = buildScript(complaint, settings.lang).map((line) => localized(line));
+  const summary = localized(complaint.summary);
   const txn = complaint.transaction;
 
   const call1930 = () => {
@@ -124,8 +126,8 @@ export default function ComplaintScreen() {
         <AppText variant="caption" color={colors.dangerDeep} style={styles.kicker}>
           {localized(SCAM_TYPES[complaint.scamType].label).toUpperCase()}
         </AppText>
-        <AppText variant="body">{complaint.summary}</AppText>
-        <Button label={t('verdict.listen')} icon="volume-high" variant="secondary" onPress={() => speak(complaint.summary, { force: true })} />
+        <AppText variant="body">{summary}</AppText>
+        <Button label={t('verdict.listen')} icon="volume-high" variant="secondary" onPress={() => speak(summary, { force: true })} />
       </Card>
 
       <SectionHeader title={t('kit.steps')} />

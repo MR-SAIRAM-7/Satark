@@ -11,7 +11,9 @@ export interface UpiFinding {
   personal: boolean;
 }
 
-const VPA_RE = /(?<![\w.])([a-z0-9][a-z0-9._-]{1,48})@([a-z][a-z0-9]{1,20})(?![\w.])/gi;
+// A VPA has no dot after the handle ("name@ybl"); an email does ("name@gmail.com").
+// A sentence-ending full stop after the handle is fine.
+const VPA_RE = /(?<![\w.])([a-z0-9][a-z0-9._-]{1,48})@([a-z][a-z0-9]{1,20})(?!\w|\.\w)/gi;
 const UPI_URI_RE = /upi:\/\/pay\?[^\s<>"']+/gi;
 
 function toFinding(vpa: string, extra: Partial<UpiFinding> = {}): UpiFinding {

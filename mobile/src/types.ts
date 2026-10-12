@@ -48,6 +48,8 @@ export interface ConversationThread {
   evidence: Evidence[];
   stage: Stage;
   score: number;
+  /** What kind of scam this conversation is, once any message has made it clear. */
+  scamType: ScamType;
   updatedAt: number;
   checkIds: string[];
 }

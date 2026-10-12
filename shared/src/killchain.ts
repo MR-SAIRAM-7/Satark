@@ -62,10 +62,14 @@ export function highestStage(evidence: readonly Evidence[]): Stage {
   return evidence.reduce<Stage>((max, e) => (e.stage > max ? e.stage : max), 0);
 }
 
-/** Merge evidence from a new message into a conversation: one quote per stage, newest wins. */
-export function mergeEvidence(previous: readonly Evidence[], next: readonly Evidence[]): Evidence[] {
+/**
+ * Merge evidence into one quote per stage. The first quote for a stage is kept:
+ * it is the moment the scammer reached that stage, and it keeps the meter steady
+ * instead of swapping quotes as more messages arrive.
+ */
+export function mergeEvidence(first: readonly Evidence[], later: readonly Evidence[]): Evidence[] {
   const byStage = new Map<Stage, Evidence>();
-  for (const e of [...previous, ...next]) byStage.set(e.stage, e);
+  for (const e of [...first, ...later]) if (!byStage.has(e.stage)) byStage.set(e.stage, e);
   return [...byStage.values()].sort((a, b) => a.stage - b.stage);
 }
 
