@@ -13,7 +13,7 @@ import { Screen } from '@/components/ui/Screen';
 import { CYBERCRIME_PORTAL, HELPLINE_1930 } from '@/data/directory';
 import { buildComplaint } from '@/features/complaint/builder';
 import { openKit } from '@/features/complaint/pdf';
-import { advanceStage, sendWhatsAppUpdate } from '@/features/complaint/tracker';
+import { advanceStage, refreshCase, sendWhatsAppUpdate } from '@/features/complaint/tracker';
 import { useLocalized, useT } from '@/i18n';
 import { CopyBlock, Tracker, WhatsAppLog } from '@/screens/complaint/sections';
 import { dial } from '@/services/dial';
@@ -65,6 +65,12 @@ export default function ComplaintScreen() {
   const complaint = useComplaints(selectComplaint(id));
   const settings = useSettings();
   const showToast = useUi((s) => s.showToast);
+
+  // Stages the cyber cell has set since (bank hold, FIR, IO assigned) come from the server.
+  const caseRef = complaint?.caseRef;
+  useEffect(() => {
+    if (caseRef && id) void refreshCase(id);
+  }, [caseRef, id]);
 
   if (id === 'new') return <Building checkId={checkId} />;
   if (!complaint) {

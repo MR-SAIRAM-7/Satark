@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { goBack, Screen } from '@/components/ui/Screen';
 import { DRILL_IDS, sampleById, type Sample } from '@/data/samples';
 import { useLocalized, useT } from '@/i18n';
+import { api } from '@/services/api';
 import { speak } from '@/services/voice';
 import { useDrills } from '@/store/activity';
 import { colors, radius, spacing } from '@/theme/tokens';
@@ -64,6 +65,7 @@ export default function DrillScreen() {
     setAnswer(saysScam);
     if (right) setScore((s) => s + 1);
     record(drill.id, right);
+    void api.drillResult(drill.id, right);
     speak(`${t(right ? 'drill.correct' : 'drill.wrong')} ${localized(drill.lesson)}`);
   };
 

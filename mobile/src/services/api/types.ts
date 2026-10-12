@@ -1,4 +1,4 @@
-import type { AnalyzeRequest, AnalyzeResponse, IndicatorType, LangCode, ParsedTxn, ScamType } from '@satark/shared';
+import type { AnalyzeRequest, AnalyzeResponse, FirStageId, IndicatorType, LangCode, ParsedTxn, ScamType } from '@satark/shared';
 
 import type { CommunityIoc } from '@/types';
 
@@ -23,6 +23,8 @@ export type DeliveryStatus = 'sent' | 'demo' | 'failed';
 /** A Complaint Kit, as filed into the cyber cell's case queue (POST /complaint). Text is masked. */
 export interface CaseFiling {
   client_id: string;
+  /** The checks behind the kit: lets the server fold it into a golden-hour case it already opened. */
+  related_check_ids: string[];
   scam_type: ScamType;
   lang: LangCode;
   locality: string;
@@ -39,6 +41,36 @@ export interface CaseFiling {
 export interface ListenResult {
   transcript: string;
   lang?: string;
+}
+
+/** The server's view of a filed case: its stages and the messages it sent the family. */
+export interface CaseSync {
+  ref: string;
+  stage: FirStageId;
+  timeline: { stage: FirStageId; at: string; note?: string }[];
+  ackNumber: string | null;
+  firNumber: string | null;
+  messages: {
+    id: string;
+    channel: 'whatsapp' | 'push' | 'email' | 'voice';
+    audience: string;
+    body: string;
+    status: 'sent' | 'demo' | 'failed' | 'skipped';
+    purpose?: string;
+    createdAt: string;
+  }[];
+}
+
+/** A family alert as the server sends it (Socket.IO `alert`, `GET /alerts`). */
+export interface ServerAlert {
+  id: string;
+  kind: string;
+  title?: string;
+  summary?: string;
+  score?: number;
+  scamType?: ScamType;
+  ackedAt?: string | null;
+  createdAt: string;
 }
 
 /**
@@ -81,5 +113,35 @@ export interface SatarkApi {
    * File the kit into the cyber cell's case queue, which then drives the
    * automated stage updates. Null when there is no backend or it is unreachable.
    */
-  fileComplaint(filing: CaseFiling): Promise<{ ref: string } | null>;
+  fileComplaint(filing: CaseFiling): Promise<CaseSync | null>;
+
+  /** Stages the victim reaches (1930 called, portal filed, acknowledged); the server messages the family. */
+  updateCase(caseRef: string, stage: 'helpline_1930' | 'portal_filed' | 'acknowledged', ackNumber?: string): Promise<CaseSync | null>;
+
+  /** The case as the cyber cell sees it: picks up stages the police have set. */
+  getCase(caseRef: string): Promise<CaseSync | null>;
+
+  /** A debit soon after a scam (F11): the server opens the golden-hour case and alerts the family. */
+  reportTransaction(input: { txn: ParsedTxn; at: number; relatedCheckId: string }): Promise<{ ref: string } | null>;
+
+  /** Alerts about the people this phone looks after (guardian and Home Guardian roles). */
+  familyAlerts(): Promise<ServerAlert[] | null>;
+
+  /** Acknowledge a family alert: stops the server escalating it. */
+  ackAlert(serverId: string): Promise<void>;
+
+  /** The elder's current pairing code, issued by the server. Null when there is no backend. */
+  pairingCode(): Promise<string | null>;
+
+  /** Link this guardian or Home Guardian phone to an elder with their code. */
+  linkFamily(code: string): Promise<{ name: string } | 'invalid' | null>;
+
+  /** A Home Guardian transcript line, so the server can cut the call on the elder's phone. */
+  listenText(sessionId: string, text: string, caller?: string): Promise<void>;
+
+  /** Scam drill result, for the guardian's readiness score. */
+  drillResult(drillId: string, passed: boolean): Promise<void>;
+
+  /** The current session token (for the live connection), or null. */
+  sessionToken(): Promise<string | null>;
 }

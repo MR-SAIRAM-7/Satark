@@ -4,13 +4,17 @@ import { useEffect, useRef } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { registerBackgroundSync, toIncoming } from '@/background';
+import { hasBackend } from '@/config/env';
 import { screenIncomingCall } from '@/features/calls/guard';
 import { syncCommunity } from '@/features/detection/community';
 import { processIncoming } from '@/features/detection/pipeline';
 import { seedCommunityIntel } from '@/features/demo/seed';
+import { refreshPairingCode, syncFamilyAlerts } from '@/features/family/sync';
 import { tNow } from '@/i18n';
+import { refreshSession } from '@/services/api/http';
 import { SatarkNative } from '@/services/native';
 import { initNotifications, onNotificationTap } from '@/services/notifications';
+import { connectRealtime } from '@/services/realtime';
 import { ensureLanguagePack } from '@/services/translation';
 import { useIntel } from '@/store/activity';
 import { useSettings } from '@/store/settings';
@@ -25,6 +29,7 @@ export function AppBridge() {
   const onboarded = useSettings((s) => s.onboarded);
   const paused = useSettings((s) => s.protectionPaused);
   const lang = useSettings((s) => s.lang);
+  const role = useSettings((s) => s.role);
 
   // One-time start-up work.
   useEffect(() => {
@@ -41,11 +46,20 @@ export function AppBridge() {
   // Foreground service and native listeners, once the user has finished onboarding.
   useEffect(() => {
     if (!onboarded) return;
-    initNotifications();
+    // Once notifications are allowed there is a push token: sign in again so the server has it.
+    void initNotifications().then((allowed) => allowed && refreshSession());
     SatarkNative.setProtectionPaused(paused);
     if (paused) SatarkNative.stopProtectionService();
     else SatarkNative.startProtectionService(tNow('home.protected'), tNow('home.protected.sub'));
   }, [onboarded, paused, lang]);
+
+  // With a backend: the live connection, alerts about the family, and the server's pairing code.
+  useEffect(() => {
+    if (!onboarded || !hasBackend) return;
+    connectRealtime();
+    void syncFamilyAlerts();
+    void refreshPairingCode();
+  }, [onboarded, role]);
 
   useEffect(() => {
     const handle = (event: Parameters<typeof toIncoming>[0]) => {
@@ -64,7 +78,9 @@ export function AppBridge() {
       }),
     ];
     const appState = AppState.addEventListener('change', (state) => {
-      if (state === 'active') drain();
+      if (state !== 'active') return;
+      drain();
+      if (hasBackend) void syncFamilyAlerts();
     });
     const stopTaps = onNotificationTap((data) => {
       if (data.screen === 'verdict' && typeof data.checkId === 'string') {

@@ -1,9 +1,10 @@
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 /**
- * Local notifications for alerts raised on this phone. Guardian pushes from the
- * server (Firebase Cloud Messaging) plug in here when the backend lands.
+ * Local notifications for alerts raised on this phone, and the Expo push token
+ * the backend uses to reach this phone (guardian alerts, delivered through FCM).
  */
 const ALERT_CHANNEL = 'satark-alerts';
 const supported = Platform.OS !== 'web';
@@ -54,4 +55,20 @@ export function onNotificationTap(handler: (data: Record<string, unknown>) => vo
     handler(response.notification.request.content.data ?? {}),
   );
   return () => sub.remove();
+}
+
+/**
+ * This phone's Expo push token, only if the user has already allowed
+ * notifications (never prompts). Null on the web, without an EAS project, or
+ * before permission is granted.
+ */
+export async function pushTokenIfAllowed(): Promise<string | null> {
+  if (!supported) return null;
+  try {
+    if (!(await Notifications.getPermissionsAsync()).granted) return null;
+    const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+    return (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
+  } catch {
+    return null;
+  }
 }

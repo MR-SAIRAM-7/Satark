@@ -67,6 +67,8 @@ export interface GuardianAlert {
   checkId?: string;
   complaintId?: string;
   read: boolean;
+  /** Set for alerts that came from the server (another phone in the family). */
+  serverId?: string;
 }
 
 export interface CommunityIoc {

@@ -38,7 +38,8 @@ export function AlertRow({ alert }: { alert: GuardianAlert }) {
   };
 
   return (
-    <Card onPress={alert.checkId || alert.complaintId ? open : undefined} style={styles.alert} accessibilityLabel={alert.title}>
+    // Tapping acknowledges the alert (which stops the server escalating it) and opens what it is about.
+    <Card onPress={alert.checkId || alert.complaintId || !alert.read ? open : undefined} style={styles.alert} accessibilityLabel={alert.title}>
       <IconBadge name={look.icon} color={look.color} soft={look.soft} />
       <View style={styles.flex}>
         <View style={styles.alertTop}>

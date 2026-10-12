@@ -1,6 +1,6 @@
 import { voiceLineFor } from '@satark/shared';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { LanguagePicker } from '@/components/LanguagePicker';
@@ -11,6 +11,7 @@ import { Chip, ListRow, SectionHeader, Toggle } from '@/components/ui/primitives
 import { Screen } from '@/components/ui/Screen';
 import { hasBackend, hasDirectLlm } from '@/config/env';
 import { resetDemoData } from '@/features/demo/seed';
+import { refreshPairingCode } from '@/features/family/sync';
 import { useT, type StringKey } from '@/i18n';
 import { speak } from '@/services/voice';
 import { useSettings, type TextScale } from '@/store/settings';
@@ -30,6 +31,12 @@ export default function SettingsTab() {
   const [confirmReset, setConfirmReset] = useState(false);
 
   const engine = hasBackend ? 'settings.engine.backend' : hasDirectLlm ? 'settings.engine.deviceAi' : 'settings.engine.device';
+
+  // The pairing code a guardian types in is issued (and checked) by the server.
+  const role = s.role;
+  useEffect(() => {
+    if (role === 'elder') void refreshPairingCode();
+  }, [role]);
 
   const reset = async () => {
     if (!confirmReset) {

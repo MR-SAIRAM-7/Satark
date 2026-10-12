@@ -61,6 +61,8 @@ function checkTransactionAfterScam(local: LocalAnalysis, at: number): void {
   });
   speak(translate(lang, 'txn.question'));
   notify(translate(lang, 'txn.title'), translate(lang, 'txn.question'), { screen: 'txn' });
+  // With a backend: the golden-hour case opens on the server too, and the family and cyber cell are alerted.
+  if (useSettings.getState().role === 'elder') void api.reportTransaction({ txn: local.txn, at, relatedCheckId: related.id });
 }
 
 /** Warn the elder and alert the family, according to the verdict tier. */

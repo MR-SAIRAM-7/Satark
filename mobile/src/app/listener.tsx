@@ -10,7 +10,7 @@ import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { goBack, Screen } from '@/components/ui/Screen';
-import { startCallCut } from '@/features/calls/guard';
+import { markLocalListenSession, startCallCut } from '@/features/calls/guard';
 import { SCAMMER_NUMBER } from '@/features/demo/scenarios';
 import { processIncoming } from '@/features/detection/pipeline';
 import { addTranscript, DEMO_CALL_SCRIPT, EMPTY_LISTENER, type ListenerState } from '@/features/listener/session';
@@ -63,12 +63,15 @@ export default function ListenerScreen() {
     cutSent.current = false;
     setState(EMPTY_LISTENER);
     setMode('demo');
+    markLocalListenSession(sessionId);
     let at = 0;
     DEMO_CALL_SCRIPT.forEach((line, index) => {
       at += line.delayMs;
       timers.current.push(
         setTimeout(() => {
           setState((s) => addTranscript(s, line.text));
+          // With a backend, the server follows the call too and cuts it on the elder's own phone.
+          void api.listenText(sessionId, line.text, number);
           if (index === DEMO_CALL_SCRIPT.length - 1) setMode('idle');
         }, at),
       );
@@ -83,6 +86,7 @@ export default function ListenerScreen() {
     cutSent.current = false;
     setState(EMPTY_LISTENER);
     setMode('mic');
+    markLocalListenSession(sessionId);
     micLoop.current = true;
 
     while (micLoop.current) {

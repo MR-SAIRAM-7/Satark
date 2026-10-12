@@ -13,7 +13,7 @@ import { useUi } from '@/store/ui';
 import type { CheckRecord, Complaint, EvidenceItem } from '@/types';
 
 import { renderKit } from './pdf';
-import { advanceStage } from './tracker';
+import { advanceStage, applyCaseSync, sendWhatsAppUpdate, stageMessage } from './tracker';
 
 const CHANNEL: Partial<Record<CheckRecord['source'], string>> = {
   whatsapp: 'WhatsApp',
@@ -53,13 +53,17 @@ async function txnEvidence(txn: ParsedTxn, at: number): Promise<EvidenceItem> {
 
 /**
  * With a backend, the kit is also filed into the partner cyber cell's queue,
- * which sends the automated WhatsApp updates as the case moves. Masked text only.
+ * which sends the kit to the family and the automated WhatsApp updates as the
+ * case moves. Masked text only. If filing fails (offline), the phone sends the
+ * kit-ready message itself, as it does without a backend.
  */
 function fileWithCyberCell(complaint: Complaint, channel: string): void {
+  if (api.mode !== 'backend') return;
   const { elder, guardian, lang } = useSettings.getState();
   api
     .fileComplaint({
       client_id: complaint.id,
+      related_check_ids: complaint.checkIds,
       scam_type: complaint.scamType,
       lang,
       locality: elder.locality,
@@ -74,7 +78,14 @@ function fileWithCyberCell(complaint: Complaint, channel: string): void {
         .filter((e) => e.kind !== 'transaction')
         .map((e) => ({ kind: e.kind, label: e.label, content: mask(e.content), at: e.at })),
     })
-    .then((filed) => filed && useComplaints.getState().patch(complaint.id, { caseRef: filed.ref }))
+    .then(async (filed) => {
+      if (filed) {
+        applyCaseSync(complaint.id, filed);
+        return;
+      }
+      const latest = useComplaints.getState().complaints.find((c) => c.id === complaint.id);
+      if (latest?.updatesEnabled) await sendWhatsAppUpdate(complaint.id, stageMessage(latest, 'kit_ready'), 'Satark_Complaint_Kit.pdf');
+    })
     .catch(() => undefined);
 }
 

@@ -48,6 +48,20 @@ export async function screenIncomingCall(number: string): Promise<'blocked' | 'a
   return 'blocked';
 }
 
+/** Listening sessions started on this phone: their cut is handled here already. */
+const localListenSessions = new Set<string>();
+export const markLocalListenSession = (sessionId: string) => localListenSessions.add(sessionId);
+
+/**
+ * The Home Guardian on another phone heard stage 4+ at 85+ (the server's "CUT"
+ * signal). Start the countdown here, on the elder's phone.
+ */
+export function onCallCut(signal: { sessionId?: string; caller?: string | null }): void {
+  if (useSettings.getState().role !== 'elder') return;
+  if (signal.sessionId && localListenSessions.has(signal.sessionId)) return;
+  startCallCut(signal.caller || 'Unknown caller');
+}
+
 /** Stage 4+ at 85+ on a live call: red overlay, spoken warning, countdown. */
 export function startCallCut(number: string, checkId?: string): void {
   const { lang } = useSettings.getState();
@@ -89,7 +103,8 @@ export async function finishCallCut(
     scamType: 'digital_arrest',
     checkId,
   });
-  await reportIndicators([toIndicator(number)], 'digital_arrest', checkId ?? '');
+  // A masked number (from another phone's Home Guardian) is not an identifier anyone can match: skip it.
+  if (!/x/i.test(number)) await reportIndicators([toIndicator(number)], 'digital_arrest', checkId ?? '');
   speak(translate(lang, 'call.ended'));
   return ended;
 }

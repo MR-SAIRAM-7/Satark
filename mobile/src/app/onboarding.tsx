@@ -11,9 +11,12 @@ import { Button, type IconName } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Field, IconBadge } from '@/components/ui/primitives';
 import { goBack, Screen } from '@/components/ui/Screen';
+import { hasBackend } from '@/config/env';
+import { linkFamily, refreshPairingCode } from '@/features/family/sync';
 import { useT, type StringKey } from '@/i18n';
 import { speak } from '@/services/voice';
 import { useSettings } from '@/store/settings';
+import { useUi } from '@/store/ui';
 import { colors, radius, spacing } from '@/theme/tokens';
 import type { Role } from '@/types';
 
@@ -33,9 +36,16 @@ export default function Onboarding() {
   const [index, setIndex] = useState(0);
   const step = STEPS[index] ?? 'language';
 
-  const [name, setName] = useState(settings.elder.name);
-  const [familyName, setFamilyName] = useState(settings.guardian?.name ?? '');
-  const [familyPhone, setFamilyPhone] = useState(settings.guardian?.phone ?? '');
+  // On an elder's phone "me" is `elder` and the family member is `guardian`;
+  // on a guardian or Home Guardian phone it is the other way round.
+  const startedAsElder = settings.role === 'elder';
+  const me = startedAsElder ? settings.elder : settings.guardian;
+  const family = startedAsElder ? settings.guardian : settings.elder;
+  const [name, setName] = useState(me?.name ?? '');
+  const [myPhone, setMyPhone] = useState(me?.phone ?? '');
+  const [familyName, setFamilyName] = useState(family?.name ?? '');
+  const [familyPhone, setFamilyPhone] = useState(family?.phone ?? '');
+  const [code, setCode] = useState('');
   const [safeWord, setSafeWord] = useState(settings.safeWord);
 
   const titles: Record<Step, StringKey> = {
@@ -51,18 +61,32 @@ export default function Onboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
-  const finish = () => {
+  const finish = async () => {
+    const elderPhone = settings.role === 'elder';
+    const mine = { name: name.trim(), phone: myPhone.trim() };
+    const theirs = familyName.trim() || familyPhone.trim() ? { name: familyName.trim(), phone: familyPhone.trim() } : null;
     settings.update({
       onboarded: true,
-      elder: { ...settings.elder, name: name.trim() },
-      guardian: familyName.trim() ? { name: familyName.trim(), phone: familyPhone.trim(), relation: 'family' } : null,
+      elder: elderPhone ? { ...settings.elder, ...mine } : { ...settings.elder, name: theirs?.name ?? '', phone: theirs?.phone ?? '' },
+      guardian: elderPhone ? (theirs ? { ...theirs, relation: 'family' } : null) : { ...mine, relation: 'family' },
       safeWord: safeWord.trim(),
     });
     router.replace('/');
+    // A guardian or Home Guardian phone joins the elder's alerts with the code from the elder's phone.
+    if (!elderPhone && code.replace(/\D/g, '').length === 6) {
+      const linked = await linkFamily(code);
+      if (linked === 'invalid') useUi.getState().showToast(t('family.linkFailed'), 'warn');
+      else if (linked) useUi.getState().showToast(t('family.linked', { name: linked.name || theirs?.name || '' }), 'safe');
+    }
   };
 
-  const next = () => (index < STEPS.length - 1 ? setIndex(index + 1) : finish());
-  const isGuardian = settings.role === 'guardian';
+  const next = () => (index < STEPS.length - 1 ? setIndex(index + 1) : void finish());
+  const isGuardian = settings.role !== 'elder';
+
+  // The elder's pairing code comes from the server when there is one.
+  useEffect(() => {
+    if (step === 'family' && !isGuardian) void refreshPairingCode();
+  }, [step, isGuardian]);
 
   return (
     <Screen
@@ -139,9 +163,28 @@ export default function Onboarding() {
               {t('onb.family.body')}
             </AppText>
             <Field label={t('onb.family.yourName')} value={name} onChangeText={setName} autoCapitalize="words" />
+            <Field
+              label={t('onb.family.yourPhone')}
+              hint={t('onb.family.yourPhone.hint')}
+              value={myPhone}
+              onChangeText={setMyPhone}
+              keyboardType="phone-pad"
+              placeholder="+91"
+            />
             <Field label={t('onb.family.name')} value={familyName} onChangeText={setFamilyName} autoCapitalize="words" />
             <Field label={t('onb.family.phone')} value={familyPhone} onChangeText={setFamilyPhone} keyboardType="phone-pad" placeholder="+91" />
             <Field label={t('onb.family.safeWord')} hint={t('onb.family.safeWord.hint')} value={safeWord} onChangeText={setSafeWord} />
+            {isGuardian && hasBackend ? (
+              <Field
+                label={t('onb.family.code')}
+                hint={t('onb.family.code.hint')}
+                value={code}
+                onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
+                keyboardType="number-pad"
+                maxLength={6}
+                placeholder="000000"
+              />
+            ) : null}
             {isGuardian ? null : (
               <Card style={styles.code} tone={{ main: colors.brandBright, soft: colors.brandSoft }}>
                 <AppText variant="label" color={colors.textMuted}>

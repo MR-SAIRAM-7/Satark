@@ -59,8 +59,32 @@ export const localApi: SatarkApi = {
     return 'demo';
   },
 
-  // No cyber cell queue without the backend: the kit stays on the phone.
+  // No cyber cell queue, family link or live connection without the backend: the phone works on its own.
   async fileComplaint() {
+    return null;
+  },
+  async updateCase() {
+    return null;
+  },
+  async getCase() {
+    return null;
+  },
+  async reportTransaction() {
+    return null;
+  },
+  async familyAlerts() {
+    return null;
+  },
+  async ackAlert() {},
+  async pairingCode() {
+    return null;
+  },
+  async linkFamily() {
+    return null;
+  },
+  async listenText() {},
+  async drillResult() {},
+  async sessionToken() {
     return null;
   },
 };

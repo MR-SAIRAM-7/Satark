@@ -98,7 +98,8 @@ export default function CallAlertScreen() {
             </AppText>
 
             <View style={styles.ring} accessibilityLabel={`${seconds} ${t('call.seconds')}`} accessibilityLiveRegion="assertive">
-              <Svg width={RING} height={RING}>
+              {/* Rotated so the ring empties from 12 o'clock; a style transform works on Android and the web alike. */}
+              <Svg width={RING} height={RING} style={styles.ringSvg}>
                 <Circle cx={RING / 2} cy={RING / 2} r={(RING - STROKE) / 2} stroke="rgba(255,255,255,0.25)" strokeWidth={STROKE} fill="none" />
                 <AnimatedCircle
                   cx={RING / 2}
@@ -110,8 +111,6 @@ export default function CallAlertScreen() {
                   strokeDasharray={CIRCUMFERENCE}
                   animatedProps={ringProps}
                   fill="none"
-                  rotation={-90}
-                  origin={`${RING / 2}, ${RING / 2}`}
                 />
               </Svg>
               <View style={styles.ringText}>
@@ -201,6 +200,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 42, lineHeight: 54, letterSpacing: 1 },
   ring: { width: RING, height: RING, alignItems: 'center', justifyContent: 'center', marginVertical: spacing.lg },
+  ringSvg: { transform: [{ rotate: '-90deg' }] },
   ringText: { position: 'absolute', alignItems: 'center' },
   count: { fontSize: 84, lineHeight: 92 },
   resultIcon: { width: 132, height: 132, borderRadius: 66, backgroundColor: colors.textOnDark, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },

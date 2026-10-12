@@ -2,11 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { analyzeResponseSchema, fuseScores, verdictFor, type AnalyzeResponse } from '@satark/shared';
 
 import { env } from '@/config/env';
+import { pushTokenIfAllowed } from '@/services/notifications';
 import { useSettings } from '@/store/settings';
 import { newId } from '@/store/storage';
 import type { CommunityIoc } from '@/types';
 
-import type { DeliveryStatus, SatarkApi } from './types';
+import type { CaseSync, DeliveryStatus, SatarkApi, ServerAlert } from './types';
 
 const TIMEOUT_MS = 8000;
 const DEVICE_KEY = 'satark.deviceId';
@@ -17,6 +18,21 @@ const DEVICE_KEY = 'satark.deviceId';
  * guardian and file their complaints. Fetched once, refreshed on a 401.
  */
 let session: Promise<string | null> | null = null;
+
+/** Sign in again whenever who this phone is changes (role, number, family contact, place, language). */
+let identity = '';
+useSettings.subscribe((s) => {
+  const next = [s.role, s.elder.name, s.elder.phone, s.elder.locality, s.guardian?.name, s.guardian?.phone, s.lang].join('|');
+  if (next !== identity) {
+    identity = next;
+    session = null;
+  }
+});
+
+/** Forget the session, e.g. once notification permission arrives and there is a push token to register. */
+export function refreshSession(): void {
+  session = null;
+}
 
 async function deviceId(): Promise<string> {
   const saved = await AsyncStorage.getItem(DEVICE_KEY).catch(() => null);
@@ -29,7 +45,8 @@ async function deviceId(): Promise<string> {
 function token(): Promise<string | null> {
   session ??= (async () => {
     const { role, elder, guardian, lang } = useSettings.getState();
-    const me = role === 'guardian' && guardian ? guardian : elder;
+    // Elders: "me" is the elder and `guardian` the family contact. Guardians and Home Guardians: "me" is `guardian`.
+    const me = role === 'elder' ? elder : (guardian ?? { name: '', phone: '' });
     const res = await fetch(`${env.apiBaseUrl}/auth/device`, {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -40,6 +57,9 @@ function token(): Promise<string | null> {
         phone: me.phone || undefined,
         locality: elder.locality || undefined,
         lang,
+        push_token: (await pushTokenIfAllowed()) ?? undefined,
+        guardian:
+          role === 'elder' && guardian?.phone ? { name: guardian.name, phone: guardian.phone, relation: guardian.relation } : undefined,
       }),
     });
     if (!res.ok) throw new Error(`/auth/device responded ${res.status}`);
@@ -76,6 +96,26 @@ async function request<T>(path: string, init: RequestInit = {}, timeoutMs = TIME
     clearTimeout(timer);
   }
 }
+
+interface RawCase {
+  ref: string;
+  stage: CaseSync['stage'];
+  timeline?: CaseSync['timeline'];
+  ack_number?: string | null;
+  fir_number?: string | null;
+  ackNumber?: string | null;
+  firNumber?: string | null;
+  messages?: CaseSync['messages'];
+}
+
+const toSync = (raw: RawCase, messages: CaseSync['messages'] = raw.messages ?? []): CaseSync => ({
+  ref: raw.ref,
+  stage: raw.stage,
+  timeline: raw.timeline ?? [],
+  ackNumber: raw.ack_number ?? raw.ackNumber ?? null,
+  firNumber: raw.fir_number ?? raw.firNumber ?? null,
+  messages,
+});
 
 /** Belt and braces: even a buggy or compromised server cannot lower the on-device verdict. */
 function neverLower(base: AnalyzeResponse, server: AnalyzeResponse): AnalyzeResponse {
@@ -177,10 +217,78 @@ export const httpApi: SatarkApi = {
 
   async fileComplaint(filing) {
     try {
-      const data = await request<{ ref?: string }>('/complaint', { method: 'POST', body: JSON.stringify(filing) }, 30000);
-      return data.ref ? { ref: data.ref } : null;
+      return toSync(await request<RawCase>('/complaint', { method: 'POST', body: JSON.stringify(filing) }, 30000));
     } catch {
       return null;
     }
   },
+
+  async updateCase(caseRef, stage, ackNumber) {
+    try {
+      const body = JSON.stringify({ stage, ...(ackNumber ? { ack_number: ackNumber } : {}) });
+      return toSync(await request<RawCase>(`/complaints/${encodeURIComponent(caseRef)}/stage`, { method: 'POST', body }, 30000));
+    } catch {
+      return null;
+    }
+  },
+
+  async getCase(caseRef) {
+    try {
+      const data = await request<{ complaint: RawCase; messages: CaseSync['messages'] }>(`/complaints/${encodeURIComponent(caseRef)}`);
+      return toSync(data.complaint, data.messages);
+    } catch {
+      return null;
+    }
+  },
+
+  async reportTransaction({ txn, at, relatedCheckId }) {
+    try {
+      const data = await request<{ golden_hour?: boolean; complaint?: { ref: string } }>('/txn/check', {
+        method: 'POST',
+        body: JSON.stringify({ txn, at, related_check_id: relatedCheckId }),
+      });
+      return data.golden_hour && data.complaint ? { ref: data.complaint.ref } : null;
+    } catch {
+      return null;
+    }
+  },
+
+  async familyAlerts() {
+    try {
+      return (await request<{ alerts: ServerAlert[] }>('/alerts')).alerts ?? [];
+    } catch {
+      return null;
+    }
+  },
+
+  async ackAlert(serverId) {
+    await request(`/alerts/${encodeURIComponent(serverId)}/ack`, { method: 'POST' }).catch(() => undefined);
+  },
+
+  async pairingCode() {
+    try {
+      return (await request<{ code?: string }>('/guardian/code', { method: 'POST' })).code ?? null;
+    } catch {
+      return null;
+    }
+  },
+
+  async linkFamily(code) {
+    try {
+      const data = await request<{ elder?: { name?: string } }>('/guardian/link', { method: 'POST', body: JSON.stringify({ code }) });
+      return { name: data.elder?.name ?? '' };
+    } catch (err) {
+      return (err as Error).message.includes('404') ? 'invalid' : null;
+    }
+  },
+
+  async listenText(sessionId, text, caller) {
+    await request('/listen/text', { method: 'POST', body: JSON.stringify({ session_id: sessionId, text, caller }) }).catch(() => undefined);
+  },
+
+  async drillResult(drillId, passed) {
+    await request('/drill/result', { method: 'POST', body: JSON.stringify({ scenario: drillId, passed }) }).catch(() => undefined);
+  },
+
+  sessionToken: () => token(),
 };
