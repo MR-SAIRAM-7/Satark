@@ -25,7 +25,10 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.CAMERA"
       ],
       "blockedPermissions": [
         "android.permission.READ_SMS",
@@ -66,7 +69,9 @@
         {
           "android": {
             "enabled": true,
-            "singleShareMimeTypes": ["text/plain"]
+            "singleShareMimeTypes": [
+              "text/plain"
+            ]
           }
         }
       ],
@@ -85,9 +90,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "5d4ad096-f7cc-4d97-97ef-1da888fe0ed0"
-      }
+        "projectId": "94dd833d-2441-4774-a516-420fb2a5014c"
+      },
+      "router": {}
     },
-    "owner": "sairam777"
+    "owner": "sairam9989"
   }
 }
