@@ -99,7 +99,13 @@ Two rules keep it maintainable: screens never call providers directly (they go t
 | `POST /report`, `GET /iocs/sync?since=` | Community intelligence |
 | `POST /complaint/send` `{to, body, media_url}` → `{status}` | Twilio WhatsApp (`demo` when Twilio is not configured) |
 | `POST /complaint` | Files the Complaint Kit into the cyber cell's case queue; the case reference shows on the kit screen |
-| `POST /auth/device` | Anonymous device session; the JWT is sent on every other call |
+| `POST /auth/device` | Device session (and the elder's family contact); the JWT is sent on every other call, and a 401 makes the app sign in again |
+| `POST /complaints/:ref/stage`, `GET /complaints/:ref` | Stages the victim reaches go through the server (which messages the family); stages the cyber cell sets come back to the tracker |
+| `POST /txn/check` | A debit after a scam: the server opens the golden-hour case and alerts the family and the cyber cell |
+| `POST /guardian/code`, `POST /guardian/link` | Pairing: the elder's code is issued by the server; a guardian or Home Guardian phone types it in during onboarding |
+| `GET /alerts`, `POST /alerts/:id/ack` | A guardian phone's alerts about the elder; tapping one acknowledges it, which stops the server escalating it |
+| `POST /listen/text`, `POST /drill/result` | Home Guardian transcript lines (so the server can cut the call on the elder's own phone), drill results |
+| Socket.IO `alert`, `cut`, `case:update` | Live: family alerts on guardian phones, the call-cut countdown on the elder's phone, police case updates on the tracker |
 
 The backend lives in [`../backend`](../backend/README.md); `npm run dev` from the repository root starts it with demo data. For the web preview, set `EXPO_PUBLIC_API_BASE_URL=http://localhost:8000/v1`; on a phone, use the laptop's LAN IP.
 

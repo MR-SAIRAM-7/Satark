@@ -17,12 +17,12 @@ npm run backend        # API only, with reload
 | `npm run dev` | API with reload (`tsx watch`) |
 | `npm start` | API without reload |
 | `npm run seed` | Wipe and re-seed the demo data (stop the API first when using the embedded database, or use **Demo → Reset** on the dashboard) |
-| `npm test` | 34 API tests on a throwaway in-memory MongoDB |
+| `npm test` | 40 API tests on a throwaway in-memory MongoDB |
 | `npm run typecheck` | TypeScript |
 
 First start downloads a MongoDB binary for the embedded database (about 800 MB, cached in your user folder). Set `MONGODB_URI` to use Atlas instead.
 
-**Demo sign-in:** Inspector K. Rao, `+91 90000 00001`, code `123456` (`DEMO_OTP`). Seeded elders use `+91 90000 001xx` and guardians `+91 90000 002xx` (see `src/seed/data.ts`).
+**Demo sign-in:** Inspector K. Rao, `+91 90000 00001`, code `123456` (`DEMO_OTP`). Seeded elders use `+91 90000 001xx` and guardians `+91 90000 002xx` (see `src/seed/data.ts`). Seeded accounts keep the same ids across **Reset demo data**, so signed-in sessions survive a reset.
 
 ## Layout
 

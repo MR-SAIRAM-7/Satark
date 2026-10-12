@@ -8,12 +8,13 @@ A seven-minute pitch with the elder's phone (mirrored with `scrcpy`) on one side
 2. Dashboard: sign in as **+91 90000 00001**, code **123456**. Click **Enable alarm sound** once.
 3. Dashboard **Demo → Reset demo data** so the golden-hour timers start fresh.
 4. Phone: install the `preview` APK, set `EXPO_PUBLIC_API_BASE_URL=http://<laptop LAN IP>:8000/v1` in the EAS build (or use `npm run mobile:web` in a phone-sized browser window). Onboard as **Lakshmi Devi, +91 90000 00101, Kukatpally**, guardian **Ravi Kumar, +91 90000 00201**: the API links the phone to the seeded Lakshmi, so her son and her locality are already in the story.
-5. Optional live data: **Demo → Live traffic simulator ON** for a scam event every 10-25 seconds.
+5. Optional second phone: onboard it as **guardian, Ravi Kumar, +91 90000 00201**. Lakshmi's alerts appear on it live, and tapping one acknowledges it (no escalation). A spare phone can be the **Home Guardian**: onboard it in that role and type the code from **Settings → Pairing code** on Lakshmi's phone.
+6. Optional live data: **Demo → Live traffic simulator ON** for a scam event every 10-25 seconds.
 
 ## Round 1: the scam arrives (phone, 2 minutes)
 
 1. Phone: **Settings → Demo control room → Prompt-injection attack**, or paste the "Fake police message" example into **Is this safe?**
-2. Point at: the red screen, the voice warning, the Kill Chain meter, "Reported by N other Satark users" (the number came from the community blocklist the phone synced), "Ravi Kumar has been alerted".
+2. Point at: the red screen, the voice warning, the Kill Chain meter, "Reported by N other Satark users" (the number came from the community blocklist the phone synced), "Ravi Kumar has been alerted" (and, if you have the second phone, the alert arriving on it).
 3. Dashboard: the check appears in the live feed and on the map at Kukatpally.
 4. Dashboard **Explainable AI**: paste the same message (or pick **Disguised + prompt injection**). Show score = max(layers), the de-obfuscated quotes, R15 "hidden instructions aimed at AI filters", and the n-grams the classifier saw.
 

@@ -551,7 +551,8 @@ What happens without anyone pressing a button, all in `backend/src/services` and
 | A case has not moved for 48 hours | A follow-up message asking for the acknowledgement number |
 | Three independent reports of one number, UPI ID or link | Indicator confirmed, pushed to every phone at the next sync, announced on the dashboard |
 | Every 10 minutes | Reports re-clustered into campaigns |
-| Live call: Home Guardian hears stage 4+ at 85+ | "CUT" signal to the elder's phone (10-second countdown), guardian alert, dashboard alarm |
+| Live call: Home Guardian hears stage 4+ at 85+ | "CUT" signal to the paired elder's phone (10-second countdown), guardian alert, dashboard alarm, and the caller's number reported to the community blocklist |
+| A guardian taps an alert on their phone, or an officer presses **Acknowledge** on the dashboard | The alert is acknowledged on the server and stops escalating |
 
 Satark deliberately does **not** submit to cybercrime.gov.in or call 1930 by itself: filing needs the victim's own OTP and a captcha, there is no public API, and filing in someone's name without them is what a scam tool would do. It automates everything up to that point and then tracks the case.
 
@@ -585,25 +586,26 @@ Satark deliberately does **not** submit to cybercrime.gov.in or call 1930 by its
 
 ## API reference
 
-Node.js + Express, all routes under `/v1` ([`backend/README.md`](backend/README.md) has request examples). Request bodies are validated with zod. "Device" means any signed-in app user; police routes need the police role.
+Node.js + Express, all routes under `/v1` ([`backend/README.md`](backend/README.md) has request examples). Request bodies are validated with zod. "app" means a signed-in app session (the app gets one automatically from `/auth/device`); police routes need the police role. A token whose account was deleted or changed role gets a 401, and the app signs in again.
 
 | Method | Path | Who | Purpose |
 |---|---|---|---|
 | `POST` | `/auth/otp/start`, `/auth/otp/verify` | anyone | Phone sign-in (Twilio Verify; `DEMO_OTP` in demo mode); returns a JWT |
-| `POST` | `/auth/device` | app | Anonymous device session for an install |
+| `POST` | `/auth/device` | app | Device session for an install; an elder's family contact is registered with it, so WhatsApp alerts reach them before they install Satark |
 | `GET` `PATCH` | `/auth/me` | signed in | Profile, language, push token |
 | `POST` | `/analyze` | anyone | Layers 3-5: masked text in, verdict JSON out (plus `ml`, `community_hits`, `check_id`) |
-| `POST` | `/tts`, `/translate` | anyone | Sarvam Bulbul and Mayura |
-| `POST` | `/listen`, `/listen/text` | Home Guardian | Audio chunk or text line; returns transcript, stage, score and the cut flag |
-| `POST` | `/report` | anyone | Confirm a scam: hashed indicators + locality |
+| `POST` | `/tts`, `/translate` | app | Sarvam Bulbul and Mayura |
+| `POST` | `/listen`, `/listen/text` | app (Home Guardian) | Audio chunk or text line; returns transcript, stage, score and the cut flag. At stage 4+ and 85+ the paired elder's phone gets the CUT signal and the caller is reported |
+| `POST` | `/report` | app | Confirm a scam: hashed indicators + locality; one report per account |
 | `GET` | `/iocs/sync?since=` | anyone | Hashed indicators changed since a time, in the phone's cache format |
 | `POST` | `/txn/check` | elder | Debit SMS after a scam: opens the golden-hour case |
 | `POST` | `/guardian/code`, `/guardian/link` | elder, guardian | Pair with a 6-digit code |
 | `GET` | `/guardian/elders`, `/alerts` | guardian | The family's alerts and drill readiness |
 | `POST` | `/alerts/:id/ack` | signed in | Acknowledge an alert (stops escalation) |
-| `POST` | `/complaint` | app | File a case with the Complaint Kit; returns the case reference and PDF link |
-| `POST` | `/complaint/send` | app | WhatsApp delivery for the app's tracker |
-| `GET` `POST` | `/complaints`, `/complaints/:id`, `/complaints/:id/kit`, `/complaints/:id/ack` | owner, police | Read a case, get a fresh kit link, save the acknowledgement number |
+| `POST` | `/complaint` | app | File a case with the Complaint Kit; returns the case reference, PDF link and the messages sent. Idempotent, and merged into a golden-hour case the server already opened for the same conversation |
+| `POST` | `/complaint/send` | app | WhatsApp from the app's tracker, only to the user's own number and their linked family |
+| `GET` `POST` | `/complaints`, `/complaints/:id`, `/complaints/:id/kit`, `/complaints/:id/ack` | owner, police | Read a case (the app picks up the cyber cell's stages from here), get a fresh kit link, save the acknowledgement number |
+| `POST` | `/complaints/:id/stage` | owner | Stages the victim reaches (1930 called, portal filed, acknowledged); the server messages the family |
 | `POST` | `/whatsapp/inbound` | Twilio | Forward-to-Satark bot (signature-checked) |
 | `GET` `PATCH` | `/cases`, `/cases/:id` | police | The case queue; moving a stage messages the family |
 | `GET` | `/dashboard/summary`, `map`, `trends`, `campaigns`, `indicators`, `feed`, `outbox`, `alerts`, `weather` | police | Dashboard panels |
@@ -697,7 +699,7 @@ npm run dev
 
 `npm run dev` starts the API on http://localhost:8000 and the dashboard on http://localhost:3000. On first start the API runs an embedded MongoDB (kept in `backend/.data`), seeds a fortnight of demo data for Hyderabad and schedules the automations. Sign in to the dashboard as **Inspector K. Rao, +91 90000 00001, code 123456**.
 
-To point the app at the API, create `mobile/.env` with `EXPO_PUBLIC_API_BASE_URL=http://<your-computer's-LAN-IP>:8000/v1` (or `http://localhost:8000/v1` for the web preview) and run `npm run mobile:web`. Onboard as Lakshmi Devi, +91 90000 00101, to join the seeded storyline (her son Ravi is her guardian).
+To point the app at the API, create `mobile/.env` with `EXPO_PUBLIC_API_BASE_URL=http://<your-computer's-LAN-IP>:8000/v1` (or `http://localhost:8000/v1` for the web preview) and run `npm run mobile:web`. Onboard as Lakshmi Devi, +91 90000 00101, to join the seeded storyline (her son Ravi is her guardian). A second phone onboarded as **guardian** Ravi Kumar, +91 90000 00201, receives her alerts live; any other guardian or Home Guardian phone joins her with the 6-digit code under **Settings → Pairing code** on her phone. For APK builds, use an `https://` API URL (for example `ngrok http 8000`): Android blocks plain `http://` in release builds.
 
 Or with Docker (API, dashboard and MongoDB):
 
@@ -738,7 +740,7 @@ A test checks that the Node scorer gives the same probabilities as scikit-learn.
 npm test
 ```
 
-Vitest covers the shared engine (30 tests) and the API (34 tests on an in-memory MongoDB: analysis, auth and roles, community intel, cases and the golden hour, escalation, STIX, the WhatsApp bot, the live-call CUT signal over Socket.IO, classifier parity). `npm run typecheck` checks every workspace. GitHub Actions runs both and builds the dashboard on every push.
+Vitest covers the shared engine (30 tests) and the API (40 tests on an in-memory MongoDB: analysis, sessions and roles, community intel, filing, merging and stage updates, the golden hour, the WhatsApp relay restriction, escalation, STIX, the WhatsApp bot, the live-call CUT signal over Socket.IO, classifier parity). `npm run typecheck` checks every workspace. GitHub Actions runs both and builds the dashboard on every push.
 
 ## Environment variables
 
@@ -794,6 +796,8 @@ A security product must be secure itself.
 - Phone, Aadhaar, PAN and account numbers masked by regex **on the phone, before upload**; the server stores masked text only
 - Users' phone numbers encrypted (AES-256-GCM) with HMAC lookup hashes; pino redacts authorization headers from logs
 - Twilio webhook signatures checked whenever `TWILIO_AUTH_TOKEN` is set; Complaint Kit links signed and expiring
+- The server is never an open WhatsApp relay: the app can only message its user and their linked family
+- Reports, filing, voice and listening need a session; community reports count once per account; a Home Guardian session can only be read by the phone that started it; tokens of deleted or re-roled accounts stop working at once
 - CORS limited to the dashboard and app origins; HTTPS via the hosting proxy in production
 - Planned: `gitleaks` pre-commit hook, `eslint-plugin-security` and `npm audit` in CI, an OWASP ZAP baseline scan against our own deployment only
 
@@ -812,17 +816,17 @@ Measured numbers only. The table says where each comes from; a dash means it has
 
 | Metric | Target | Measured | How measured |
 |---|---|---|---|
-| Classifier recall on scam messages (≥40) | 90%+ | **100.0%** | 1062 held-out messages from 35 scripts never seen in training |
-| Classifier false-positive rate on genuine messages (≥40) | < 5% | **9.7%** | Same set; mostly awareness SMS and short chats, which the server then softens with sender trust |
-| Classifier false-positive rate at the scam line (≥70) | < 1% | **0.0%** | Same set (precision 100.0%, recall 68.2%) |
-| Recall under attack, with layer 1 | Within a few points of clean | **100.0%** (without layer 1: 99.3%) | Held-out scams rewritten with look-alike letters, zero-width characters, spacing, leetspeak, emoji and prompt injection |
+| Classifier recall on scam messages (≥40) | 90%+ | **94.0%** | 1167 held-out messages from 41 scripts never seen in training |
+| Classifier false-positive rate on genuine messages (≥40) | < 5% | **3.3%** | Same set; the misses are awareness SMS that quote scam phrases, which the server softens with sender trust |
+| Classifier false-positive rate at the scam line (≥70) | < 1% | **3.3%** | Same set (precision 96.2%, recall 83.1%); all from one held-out awareness script. On its own layer 3 is capped below 70, so this never becomes a red alert |
+| Recall under attack, with layer 1 | Within a few points of clean | **93.7%** (without layer 1: 91.9%) | Held-out scams rewritten with look-alike letters, zero-width characters, spacing, leetspeak, emoji and prompt injection |
 | Node scorer vs scikit-learn | Identical | Matches to 5 decimal places | `backend/test/ml.test.ts` on 140 messages |
 | Server analysis latency (layers 3 and 5) | < 300 ms | **5-50 ms**; about 450 ms the first time a new link's domain age is looked up (RDAP, then cached) | `latency_ms` on `/v1/analyze`, local run, no LLM key |
 | Complaint Kit ready | < 30 s after tap | 1 s on the phone; first server PDF about 4 s (browser start), then under 1 s | App timer; API test |
 | Message to warning time | < 5 s | – | Needs the EAS build on a phone |
 | Scam phrase to call warning | ~8-10 s | – | Needs the Home Guardian phone |
 
-> **Read these with care.** The classifier numbers are measured on Satark's own template-generated corpus ([`ml/README.md`](ml/README.md)), not on real traffic. They show the pipeline works, that layer 1 holds up under attack, and that layer 3 never puts a genuine message over the scam line on its own. Real-world precision and recall must be measured on collected messages before any claim is made. Full report: [`ml/reports/metrics.md`](ml/reports/metrics.md).
+> **Read these with care.** The classifier numbers are measured on Satark's own template-generated corpus ([`ml/README.md`](ml/README.md)), not on real traffic. They show the pipeline works, that layer 1 holds up under attack, and how often layer 3 alone would flag a genuine message (on its own it can only make a message "suspicious"). Real-world precision and recall must be measured on collected messages before any claim is made. Full report: [`ml/reports/metrics.md`](ml/reports/metrics.md).
 
 **Test sets still to collect:** 50+ real scam messages from family WhatsApp groups (numbers blanked), 50+ real genuine bank, bill and delivery messages, and three call scripts recorded in Telugu by the team.
 
