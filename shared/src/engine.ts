@@ -157,3 +157,47 @@ export function toResponse(
     engine: 'on-device',
   };
 }
+
+/**
+ * Apply an LLM (layer 4) verdict on top of a base verdict. The model may raise
+ * the score, add evidence and supply better explanations, but it can never
+ * pull the result below what the rules and Kill Chain already found.
+ */
+export function raiseWith(
+  base: AnalyzeResponse,
+  llm: Pick<
+    AnalyzeResponse,
+    'score' | 'scam_type' | 'stage' | 'evidence' | 'tactics' | 'injection_attempt' | 'explanation' | 'advice'
+  >,
+  engine: string,
+): AnalyzeResponse {
+  const layer_scores = { ...base.layer_scores, ai: Math.round(llm.score) };
+  const score = fuseScores(layer_scores);
+  const verdict = verdictFor(score);
+  const evidence = mergeEvidence(llm.evidence, base.evidence);
+  const stage = Math.max(base.stage, highestStage(evidence)) as Stage;
+  const scam_type = base.scam_type === 'unknown' || llm.score > base.score ? llm.scam_type : base.scam_type;
+
+  // Only adopt the model's wording when it agrees there is a risk; a "safe"
+  // explanation must not sit under a red verdict.
+  const modelAgrees = verdictFor(llm.score) !== 'safe' || verdict === 'safe';
+  const info = SCAM_TYPES[scam_type];
+  const typeChanged = scam_type !== base.scam_type;
+
+  return {
+    ...base,
+    verdict,
+    score,
+    scam_type,
+    stage,
+    evidence,
+    tactics: [...new Set([...base.tactics, ...llm.tactics])],
+    injection_attempt: base.injection_attempt || llm.injection_attempt,
+    explanation: modelAgrees ? llm.explanation : typeChanged ? info.explanation : base.explanation,
+    advice: modelAgrees && llm.advice.length ? llm.advice : typeChanged ? info.advice.en : base.advice,
+    advice_l10n: typeChanged || !base.advice_l10n ? { hi: info.advice.hi, te: info.advice.te } : base.advice_l10n,
+    voice: verdict === 'safe' ? SAFE_INFO.voice : typeChanged || !base.voice ? info.voice : base.voice,
+    layer_scores,
+    engine,
+  };
+}
