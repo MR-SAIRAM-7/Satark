@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeInRight } from 'react-native-reanimated';
 
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { PermissionsList } from '@/components/PermissionsList';
@@ -80,7 +79,7 @@ export default function Onboarding() {
         ))}
       </View>
 
-      <Animated.View key={step} entering={FadeInRight.duration(240)} style={styles.step}>
+      <View key={step} style={styles.step}>
         {step === 'language' ? (
           <LinearGradient colors={['#1F6FEB', '#143A6E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
             <View style={styles.logo}>
@@ -158,7 +157,7 @@ export default function Onboarding() {
             )}
           </View>
         ) : null}
-      </Animated.View>
+      </View>
     </Screen>
   );
 }

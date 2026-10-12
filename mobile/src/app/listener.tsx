@@ -157,14 +157,12 @@ export default function ListenerScreen() {
       </Card>
 
       {state.cut ? (
-        <Animated.View entering={FadeInDown}>
-          <Card tone={{ main: colors.danger, soft: colors.dangerSoft }} style={styles.cut}>
+        <Card tone={{ main: colors.danger, soft: colors.dangerSoft }} style={styles.cut}>
             <Ionicons name="cut" size={26} color={colors.danger} />
             <AppText variant="bodyStrong" color={colors.dangerDeep} style={styles.flex}>
               {t('listener.cut')}
             </AppText>
-          </Card>
-        </Animated.View>
+        </Card>
       ) : null}
 
       <Card style={styles.section}>

@@ -6,7 +6,9 @@
 
 Satark (సతర్క్ / सतर्क, "alert") is an Android app that stops cyber fraud against senior citizens **while the scam is happening**. It reads incoming SMS and WhatsApp messages, checks links and UPI requests, and watches live calls. When it spots a scam, it warns the elder **by voice in Telugu, Hindi or English**, alerts their family on the spot, can end a scam call after a 10-second countdown, and builds a complete police complaint kit, delivered on **WhatsApp**, within the golden hour.
 
-**Built with:** React Native (TypeScript) + Kotlin · Node.js + Express · MongoDB Atlas · OpenAI + LangChain.js · Sarvam AI · Twilio WhatsApp · Next.js
+**Built with:** React Native (Expo, TypeScript) + Kotlin · Node.js + Express · MongoDB Atlas · Gemini + OpenRouter · Sarvam AI · Twilio WhatsApp · Next.js
+
+> **Status (12 Oct):** the Android app and the shared detection engine are built: see [`mobile/README.md`](mobile/README.md) to run and build them. The backend and dashboard come next; sections below that mention OpenAI or React Native CLI describe the original plan and are being updated as those parts land.
 
 **KPRIT Software Hackathon 2026** · 12 Oct 11:00 AM to 13 Oct 11:00 AM
 **Track:** Open Innovation (#200), combining **#127** Fraud message detector, **#164** Spam call detector, **#161** Phishing URL detector and **#144** Transaction anomaly alerts
@@ -667,13 +669,16 @@ ngrok http 8000
 ### Android app
 
 ```bash
+npm install                                        # from the repo root
 cd mobile
-cp .env.example .env        # API_BASE_URL=https://<your-backend>/v1
-# put google-services.json from Firebase in mobile/android/app/
-npx react-native run-android --mode release
+cp .env.example .env                               # optional: EXPO_PUBLIC_API_BASE_URL=https://<your-backend>/v1
+npm run web                                        # preview the screens in a browser
+eas build --profile preview --platform android     # build the APK in the cloud
 ```
 
-Install over USB (`npx react-native run-android --mode release` or `adb install`). Never send the APK over WhatsApp, because Play Protect in India blocks sideloaded apps that request sensitive permissions.
+The app is built with Expo and EAS, so Android Studio is not required. Full instructions are in [`mobile/README.md`](mobile/README.md).
+
+Install over USB (`adb install`). Never send the APK over WhatsApp, because Play Protect in India blocks sideloaded apps that request sensitive permissions.
 
 **Before a demo:** turn battery optimisation off and autostart on for Satark (Xiaomi, Realme, Vivo and Oppo kill background listeners); grant notification access, the call-screening role and overlay; turn Do Not Disturb off; use mobile data rather than venue Wi-Fi; mirror the elder phone with `scrcpy`.
 

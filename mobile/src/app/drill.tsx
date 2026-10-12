@@ -1,7 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeInRight } from 'react-native-reanimated';
 
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
@@ -94,7 +93,7 @@ export default function DrillScreen() {
         ))}
       </View>
 
-      <Animated.View key={drill.id} entering={FadeInRight.duration(240)} style={styles.step}>
+      <View key={drill.id} style={styles.step}>
         <Card style={styles.message}>
           <View style={styles.from}>
             <Ionicons name={drill.source === 'whatsapp' ? 'logo-whatsapp' : 'chatbox'} size={20} color={colors.textMuted} />
@@ -116,7 +115,7 @@ export default function DrillScreen() {
             <AppText variant="body">{localized(drill.lesson)}</AppText>
           </Card>
         ) : null}
-      </Animated.View>
+      </View>
     </Screen>
   );
 }
