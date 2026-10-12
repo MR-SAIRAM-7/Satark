@@ -7,14 +7,29 @@ import { connectDb, disconnectDb } from './db/connect';
 import { User } from './db/models';
 import { startJobs, stopJobs } from './jobs';
 import { logger } from './lib/logger';
+import { explainStartupError } from './lib/startup';
 import { seed } from './seed';
 import { closePdf } from './services/pdf';
 import { attachRealtime, closeRealtime } from './services/realtime';
 
-const { embedded } = await connectDb();
-if (env.SEED_ON_START && (await User.countDocuments()) === 0) {
-  logger.info('empty database: seeding demo data');
-  await seed();
+// A stray rejected promise in a background job must not take the API down mid-demo: log it and carry on.
+process.on('unhandledRejection', (reason) => console.error('Unhandled rejection:', reason));
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+  process.exit(1);
+});
+
+let embedded = false;
+try {
+  ({ embedded } = await connectDb());
+  if (env.SEED_ON_START && (await User.countDocuments()) === 0) {
+    logger.info('empty database: seeding demo data');
+    await seed();
+  }
+} catch (err) {
+  // Say what to fix in plain words; a deploy should never fail silently.
+  console.error(`\nSatark API could not start.\n${explainStartupError(err)}\n`);
+  process.exit(1);
 }
 
 const server = createServer(createApp());

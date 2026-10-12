@@ -34,7 +34,8 @@ export async function connectDb({ ephemeral = false } = {}): Promise<{ embedded:
     uri = embedded.getUri('satark');
     if (!ephemeral) logger.info({ dbPath }, 'MONGODB_URI not set: using embedded MongoDB');
   }
-  await mongoose.connect(uri);
+  // Fail in 15 seconds, not 30, when the cluster is unreachable: a deploy should say so quickly.
+  await mongoose.connect(uri, { serverSelectionTimeoutMS: 15_000 });
   await mongoose.connection.syncIndexes();
   return { embedded: Boolean(embedded) };
 }
