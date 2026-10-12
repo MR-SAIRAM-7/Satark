@@ -100,7 +100,10 @@ export interface OutboxMessage {
   audience: string;
   body: string;
   mediaUrl?: string;
-  status: 'sent' | 'demo' | 'failed' | 'skipped';
+  /** "delivered" and "read" come from Twilio's delivery receipts. */
+  status: 'sent' | 'delivered' | 'read' | 'demo' | 'failed' | 'skipped';
+  /** Why a message failed, or why it went without its attachment. */
+  error?: string;
   purpose?: string;
   complaint?: string;
   createdAt: string;

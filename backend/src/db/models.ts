@@ -218,9 +218,11 @@ const messageSchema = new Schema(
     audience: { type: String, enum: ['elder', 'guardian', 'police', 'bank', 'public'], default: 'elder' },
     body: String,
     mediaUrl: String,
-    status: { type: String, enum: ['sent', 'demo', 'failed', 'skipped'], required: true },
-    providerId: String,
+    // "delivered" and "read" are set by Twilio's status webhook after the message is sent.
+    status: { type: String, enum: ['sent', 'delivered', 'read', 'demo', 'failed', 'skipped'], required: true },
+    providerId: { type: String, index: true, sparse: true },
     error: String,
+    errorCode: Number,
     purpose: String,
     complaint: { type: ObjectId, ref: 'Complaint', index: true },
     alert: { type: ObjectId, ref: 'Alert' },

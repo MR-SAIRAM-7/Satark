@@ -34,6 +34,8 @@ const PURPOSE: Record<string, string> = {
 
 function Status({ status }: { status: OutboxMessage['status'] }) {
   if (status === 'sent') return <SeverityBadge severity="good" label="Sent" />;
+  if (status === 'delivered') return <SeverityBadge severity="good" label="Delivered" />;
+  if (status === 'read') return <SeverityBadge severity="good" label="Read" />;
   if (status === 'failed') return <SeverityBadge severity="critical" label="Failed" />;
   if (status === 'skipped') return <SeverityBadge severity="info" label="No number" />;
   return <SeverityBadge severity="info" label="Demo" />;
@@ -83,7 +85,11 @@ export default function OutboxPage() {
                       <div className="font-mono text-ink-3">{m.toMasked}</div>
                     </td>
                     <td className="whitespace-nowrap px-2 py-2.5 text-xs text-ink-2">{PURPOSE[m.purpose ?? ''] ?? m.purpose}</td>
-                    <td className={clsx('px-2 py-2.5 text-xs text-ink-2', m.channel === 'email' && 'whitespace-pre-line')}>{m.body}</td>
+                    <td className={clsx('px-2 py-2.5 text-xs text-ink-2', m.channel === 'email' && 'whitespace-pre-line')}>
+                      {m.body}
+                      {/* Why it failed (or went without its PDF), so the fix is obvious during a demo. */}
+                      {m.error ? <div className="mt-1 text-ink-3">{m.error}</div> : null}
+                    </td>
                     <td className="px-4 py-2.5 text-right">
                       <Status status={m.status} />
                     </td>

@@ -9,7 +9,8 @@
     "start": "tsx src/server.ts",
     "seed": "tsx src/seed/cli.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "twilio:check": "tsx src/scripts/twilio-check.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1149.0",

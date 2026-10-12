@@ -10,17 +10,18 @@
 import { maskPhone } from '@satark/shared';
 import { Expo, type ExpoPushMessage } from 'expo-server-sdk';
 import type { Types } from 'mongoose';
-import twilio from 'twilio';
 
 import { env, features } from '../config/env';
 import { Message } from '../db/models';
-import { decrypt } from '../lib/crypto';
+import { decrypt, normalizePhone } from '../lib/crypto';
 import { logger } from '../lib/logger';
+import { explainTwilioError, isPublicUrl, paced, twilioClient, webhooks, whatsappFrom } from '../lib/twilio';
 import { emitToPolice } from './realtime';
 
-export const twilioClient = features.whatsapp || features.otp ? twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN) : null;
+export { twilioClient };
 const expo = new Expo({ accessToken: env.EXPO_ACCESS_TOKEN });
 
+/** What `sendWhatsApp` reports back. "delivered" and "read" arrive later, on the status webhook. */
 export type DeliveryStatus = 'sent' | 'demo' | 'failed' | 'skipped';
 
 interface Meta {
@@ -43,31 +44,74 @@ export async function sendWhatsApp(
   meta: Meta & { mediaUrl?: string; encrypted?: boolean } = {},
 ): Promise<DeliveryStatus> {
   const { mediaUrl, encrypted, ...rest } = meta;
-  const number = to ? (encrypted ? decrypt(to) : to) : null;
+  const raw = to ? (encrypted ? decrypt(to) : to) : null;
+  // Twilio needs E.164 ("+919876543210"); people type "98765 43210".
+  const number = raw ? normalizePhone(raw) : null;
   const toMasked = number ? maskPhone(number) : 'no number on file';
 
-  if (!number) {
+  if (!number || number.length < 9) {
     await record('whatsapp', toMasked, body, 'skipped', rest, { mediaUrl });
     return 'skipped';
   }
-  if (!features.whatsapp || !twilioClient) {
+  const client = twilioClient;
+  if (!features.whatsapp || !client) {
     await record('whatsapp', toMasked, body, 'demo', rest, { mediaUrl });
     return 'demo';
   }
+
+  // Twilio downloads attachments itself. A link only this machine can open would fail the
+  // whole message (error 63019), so the text goes without it and the outbox says why.
+  const attachable = isPublicUrl(mediaUrl);
+  const note = mediaUrl && !attachable ? 'Sent without the PDF: its link is not public. Set PUBLIC_BASE_URL or S3.' : undefined;
+
   try {
-    const sent = await twilioClient.messages.create({
-      from: `whatsapp:${env.TWILIO_WHATSAPP_FROM}`,
-      to: `whatsapp:${number}`,
-      body,
-      ...(mediaUrl ? { mediaUrl: [mediaUrl] } : {}),
-    });
-    await record('whatsapp', toMasked, body, 'sent', rest, { mediaUrl, providerId: sent.sid });
+    const sent = await paced(() =>
+      client.messages.create({
+        from: `whatsapp:${whatsappFrom}`,
+        to: `whatsapp:${number}`,
+        body,
+        ...(attachable && mediaUrl ? { mediaUrl: [mediaUrl] } : {}),
+        // Delivery receipts (delivered / read / failed) come back on this webhook.
+        ...(webhooks.status ? { statusCallback: webhooks.status } : {}),
+      }),
+    );
+    await record('whatsapp', toMasked, body, 'sent', rest, { mediaUrl, providerId: sent.sid, error: note });
     return 'sent';
   } catch (err) {
-    logger.warn({ err: (err as Error).message }, 'WhatsApp send failed');
-    await record('whatsapp', toMasked, body, 'failed', rest, { mediaUrl, error: (err as Error).message });
+    const { code, message } = err as { code?: number; message?: string };
+    const reason = explainTwilioError(code, message);
+    logger.warn({ code, reason }, 'WhatsApp send failed');
+    await record('whatsapp', toMasked, body, 'failed', rest, { mediaUrl, error: reason, errorCode: code });
     return 'failed';
   }
+}
+
+/** Twilio's status webhook: move a sent message on to delivered, read or failed. */
+export async function recordDeliveryStatus(update: {
+  sid: string;
+  status: string;
+  errorCode?: string | number;
+  channelMessage?: string;
+}): Promise<boolean> {
+  const message = await Message.findOne({ providerId: update.sid });
+  if (!message) return false;
+
+  const incoming = update.status.toLowerCase();
+  const failed = incoming === 'failed' || incoming === 'undelivered';
+  // Receipts can arrive out of order: never step back from read to delivered, or from either to sent.
+  const rank: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
+  const next = failed ? 'failed' : incoming in rank ? incoming : null;
+  if (!next) return true; // queued / sending: nothing to show yet
+  if (!failed && (rank[message.status] ?? 0) >= (rank[next] ?? 0)) return true;
+
+  message.status = next as typeof message.status;
+  if (failed) {
+    message.error = explainTwilioError(update.errorCode, update.channelMessage);
+    message.errorCode = Number(update.errorCode) || undefined;
+  }
+  await message.save();
+  emitToPolice('outbox', message.toJSON());
+  return true;
 }
 
 export async function sendPush(

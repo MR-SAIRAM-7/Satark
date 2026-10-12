@@ -9,11 +9,11 @@ import { LRUCache } from 'lru-cache';
 import twilio from 'twilio';
 import { z } from 'zod';
 
-import { env } from '../config/env';
 import { sha256 } from '../lib/crypto';
-import { HttpError } from '../lib/errors';
+import { verifyTwilioSignature } from '../lib/twilio';
 import { analyzeMessage } from '../services/analysis';
 import { reportIndicators, toReported } from '../services/intel';
+import { recordDeliveryStatus } from '../services/notify';
 
 export const whatsappRouter = Router();
 
@@ -47,13 +47,33 @@ export function formatReply(r: AnalyzeResponse, lang: Lang): string {
   ].join('\n');
 }
 
+/**
+ * Delivery receipts. Twilio calls this each time a message we sent changes
+ * state, so the outbox shows delivered / read, and says exactly why a message
+ * failed (recipient has not joined the Sandbox, 24-hour window closed, ...).
+ */
+whatsappRouter.post('/whatsapp/status', async (req, res) => {
+  verifyTwilioSignature(req);
+  const body = z
+    .object({
+      MessageSid: z.string().min(10).max(64),
+      MessageStatus: z.string().max(32),
+      ErrorCode: z.string().max(12).optional(),
+      ChannelStatusMessage: z.string().max(500).optional(),
+    })
+    .parse(req.body);
+  await recordDeliveryStatus({
+    sid: body.MessageSid,
+    status: body.MessageStatus,
+    errorCode: body.ErrorCode,
+    channelMessage: body.ChannelStatusMessage,
+  });
+  // Always 204: Twilio retries on errors, and a receipt for a message we no longer hold is not one.
+  res.status(204).end();
+});
+
 whatsappRouter.post('/whatsapp/inbound', async (req, res) => {
-  if (env.TWILIO_AUTH_TOKEN) {
-    const url = `${env.PUBLIC_BASE_URL}${req.originalUrl}`;
-    if (!twilio.validateRequest(env.TWILIO_AUTH_TOKEN, req.header('x-twilio-signature') ?? '', url, req.body)) {
-      throw new HttpError(403, 'Invalid Twilio signature');
-    }
-  }
+  verifyTwilioSignature(req);
   const body = z.object({ From: z.string().min(3), Body: z.string().max(4000).default(''), NumMedia: z.string().optional() }).parse(req.body);
   const from = body.From.replace(/^whatsapp:/, '');
   const text = body.Body.trim();

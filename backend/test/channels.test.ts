@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { io as connect } from 'socket.io-client';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { GuardianLink, Ioc } from '../src/db/models';
+import { GuardianLink, Ioc, Message } from '../src/db/models';
 import { attachRealtime, closeRealtime } from '../src/services/realtime';
 import { api, app, bearer, DIGITAL_ARREST, signIn, useDatabase } from './helpers';
 
@@ -28,6 +28,36 @@ describe('WhatsApp bot (Twilio webhook)', () => {
     const reply = await inbound('REPORT', 'whatsapp:+919876500001');
     expect(reply.text).toContain('added');
     expect(await Ioc.exists({ type: 'domain', value: 'sbi-kyc-verify.live' })).toBeTruthy();
+  });
+});
+
+describe('WhatsApp delivery receipts (Twilio status webhook)', () => {
+  const receipt = (fields: Record<string, string>) => api().post('/v1/whatsapp/status').type('form').send(fields);
+  const sent = (providerId: string) =>
+    Message.create({ channel: 'whatsapp', toMasked: '+9198XXXXXX10', body: 'Complaint kit ready', status: 'sent', providerId });
+
+  it('moves a sent message to delivered, then read, and never backwards', async () => {
+    await sent('SMdelivery0000000000000000000000001');
+    const status = async () => (await Message.findOne({ providerId: 'SMdelivery0000000000000000000000001' }))?.status;
+
+    await receipt({ MessageSid: 'SMdelivery0000000000000000000000001', MessageStatus: 'delivered' }).expect(204);
+    expect(await status()).toBe('delivered');
+    await receipt({ MessageSid: 'SMdelivery0000000000000000000000001', MessageStatus: 'read' }).expect(204);
+    await receipt({ MessageSid: 'SMdelivery0000000000000000000000001', MessageStatus: 'sent' }).expect(204);
+    expect(await status()).toBe('read');
+  });
+
+  it('explains a failure in words: the recipient has not joined the Sandbox', async () => {
+    await sent('SMfailed00000000000000000000000002');
+    await receipt({ MessageSid: 'SMfailed00000000000000000000000002', MessageStatus: 'undelivered', ErrorCode: '63015' }).expect(204);
+    const message = await Message.findOne({ providerId: 'SMfailed00000000000000000000000002' });
+    expect(message?.status).toBe('failed');
+    expect(message?.errorCode).toBe(63015);
+    expect(message?.error).toMatch(/join/i);
+  });
+
+  it('accepts a receipt for a message it does not know, so Twilio stops retrying', async () => {
+    await receipt({ MessageSid: 'SMunknown0000000000000000000000003', MessageStatus: 'delivered' }).expect(204);
   });
 });
 

@@ -70,7 +70,10 @@ const schema = z.object({
   CHROME_PATH: optional,
 });
 
-const parsed = schema.safeParse(process.env);
+// A blank line in .env ("JWT_SECRET=") means "not set", so a file copied straight from
+// .env.example starts in demo mode instead of failing validation on empty secrets.
+const provided = Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== ''));
+const parsed = schema.safeParse(provided);
 if (!parsed.success) {
   console.error('Invalid configuration:', z.prettifyError(parsed.error));
   process.exit(1);

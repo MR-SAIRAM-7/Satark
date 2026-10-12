@@ -8,6 +8,7 @@ import { env, features } from '../config/env';
 import { dbReady } from '../db/connect';
 import { verifySignedPath } from '../lib/crypto';
 import { HttpError } from '../lib/errors';
+import { usingSandbox, webhooks } from '../lib/twilio';
 import { requireAuth } from '../middleware/auth';
 import { liveFeedOn, startLiveFeed, stopLiveFeed } from '../jobs/liveFeed';
 import { classifier } from '../services/ml/classifier';
@@ -24,6 +25,8 @@ export function healthReport() {
     ok: dbReady(),
     mode: env.DEMO_MODE ? 'demo' : 'live',
     integrations: { ...features, pdf: Boolean(browserPath), push: true },
+    // The URLs to paste into the Twilio console; null while the API is only reachable on this machine.
+    twilio: { sandbox: usingSandbox, webhooks },
     model: { version: classifier().version, metrics: classifier().metrics },
     liveFeed: liveFeedOn(),
     time: new Date().toISOString(),
