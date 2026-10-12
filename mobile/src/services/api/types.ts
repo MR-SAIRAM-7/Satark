@@ -55,7 +55,8 @@ export interface CaseSync {
     channel: 'whatsapp' | 'push' | 'email' | 'voice';
     audience: string;
     body: string;
-    status: 'sent' | 'demo' | 'failed' | 'skipped';
+    /** "delivered" and "read" come from Twilio's delivery receipts. */
+    status: 'sent' | 'delivered' | 'read' | 'demo' | 'failed' | 'skipped';
     purpose?: string;
     createdAt: string;
   }[];

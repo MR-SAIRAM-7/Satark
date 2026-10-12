@@ -76,16 +76,28 @@ export function applyCaseSync(complaintId: string, sync: CaseSync): void {
   for (const m of sync.messages) {
     if (m.channel !== 'whatsapp' || m.status === 'skipped' || (m.audience !== 'elder' && m.audience !== 'guardian')) continue;
     const id = `srv_${m.id}`;
-    if (known.has(id)) continue;
+    const status = deliveryState(m.status);
+    // Twilio's receipts move a message on (sent, delivered, read) after it was first recorded.
+    if (known.has(id)) {
+      store.patchWhatsApp(complaintId, id, { status });
+      continue;
+    }
     store.addWhatsApp(complaintId, {
       id,
       at: Date.parse(m.createdAt) || Date.now(),
       to: m.audience,
       body: m.body,
       attachment: m.purpose === 'kit_ready' ? 'Satark_Complaint_Kit.pdf' : undefined,
-      status: m.status === 'sent' ? 'sent' : m.status === 'failed' ? 'failed' : 'demo',
+      status,
     });
   }
+}
+
+/** The server's delivery state, in the tracker's terms ("read" shows as delivered). */
+function deliveryState(status: CaseSync['messages'][number]['status']): WhatsAppMessage['status'] {
+  if (status === 'delivered' || status === 'read') return 'delivered';
+  if (status === 'sent' || status === 'failed') return status;
+  return 'demo';
 }
 
 /** Fetch the case from the server (stages the cyber cell has set since). */

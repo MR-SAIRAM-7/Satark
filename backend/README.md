@@ -17,7 +17,7 @@ npm run backend        # API only, with reload
 | `npm run dev` | API with reload (`tsx watch`) |
 | `npm start` | API without reload |
 | `npm run seed` | Wipe and re-seed the demo data (stop the API first when using the embedded database, or use **Demo → Reset** on the dashboard) |
-| `npm test` | 40 API tests on a throwaway in-memory MongoDB |
+| `npm test` | 43 API tests on a throwaway in-memory MongoDB |
 | `npm run typecheck` | TypeScript |
 
 First start downloads a MongoDB binary for the embedded database (about 800 MB, cached in your user folder). Set `MONGODB_URI` to use Atlas instead.

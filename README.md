@@ -740,7 +740,7 @@ A test checks that the Node scorer gives the same probabilities as scikit-learn.
 npm test
 ```
 
-Vitest covers the shared engine (30 tests) and the API (40 tests on an in-memory MongoDB: analysis, sessions and roles, community intel, filing, merging and stage updates, the golden hour, the WhatsApp relay restriction, escalation, STIX, the WhatsApp bot, the live-call CUT signal over Socket.IO, classifier parity). `npm run typecheck` checks every workspace. GitHub Actions runs both and builds the dashboard on every push.
+Vitest covers the shared engine (30 tests) and the API (43 tests on an in-memory MongoDB: analysis, sessions and roles, Twilio delivery receipts, community intel, filing, merging and stage updates, the golden hour, the WhatsApp relay restriction, escalation, STIX, the WhatsApp bot, the live-call CUT signal over Socket.IO, classifier parity). `npm run typecheck` checks every workspace. GitHub Actions runs both and builds the dashboard on every push.
 
 ## Environment variables
 
