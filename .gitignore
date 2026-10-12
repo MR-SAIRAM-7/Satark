@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+
+# secrets: never commit real keys (gitleaks runs as a pre-commit hook)
+.env
+.env.*
+!.env.example
+
+# builds and caches
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.turbo/
+
+# Expo / React Native
+.expo/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+google-services.json
+
+# generated native folders (Continuous Native Generation)
+mobile/android/
+mobile/ios/
+
+# logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/

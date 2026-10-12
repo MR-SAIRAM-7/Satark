@@ -1,0 +1,483 @@
+{
+  "version": "2026.10.12",
+  "thresholds": { "suspicious": 40, "scam": 70, "cut": 85 },
+  "rules": [
+    {
+      "id": "R1",
+      "points": 60,
+      "title": {
+        "en": "Bank message from a personal mobile number",
+        "hi": "बैंक का संदेश निजी मोबाइल नंबर से आया है",
+        "te": "బ్యాంక్ సందేశం వ్యక్తిగత మొబైల్ నంబర్ నుండి వచ్చింది"
+      },
+      "why": {
+        "en": "Real banks send SMS only from registered sender IDs like XX-SBIINB-S, never from a 10-digit number.",
+        "hi": "असली बैंक केवल रजिस्टर्ड सेंडर आईडी (जैसे XX-SBIINB-S) से SMS भेजते हैं, 10 अंकों के नंबर से नहीं।",
+        "te": "నిజమైన బ్యాంకులు XX-SBIINB-S వంటి రిజిస్టర్డ్ సెండర్ ఐడీ నుండి మాత్రమే SMS పంపుతాయి, 10 అంకెల నంబర్ నుండి కాదు."
+      }
+    },
+    {
+      "id": "R2",
+      "points": 30,
+      "title": {
+        "en": "Sender ID type does not match the message",
+        "hi": "सेंडर आईडी संदेश से मेल नहीं खाती",
+        "te": "సెండర్ ఐడీ సందేశానికి సరిపోలడం లేదు"
+      },
+      "why": {
+        "en": "This came from a promotional (-P) sender but claims to be a bank alert. Bank alerts come from -S or -T senders.",
+        "hi": "यह प्रचार (-P) सेंडर से आया है, लेकिन खुद को बैंक अलर्ट बता रहा है। बैंक अलर्ट -S या -T सेंडर से आते हैं।",
+        "te": "ఇది ప్రచార (-P) సెండర్ నుండి వచ్చింది, కానీ బ్యాంక్ అలర్ట్ అని చెబుతోంది. బ్యాంక్ అలర్ట్‌లు -S లేదా -T సెండర్ల నుండి వస్తాయి."
+      }
+    },
+    {
+      "id": "R3",
+      "points": 60,
+      "title": {
+        "en": "Caller says \"bank\" but the number is not a 1600 number",
+        "hi": "कॉल करने वाला खुद को बैंक बता रहा है, पर नंबर 1600 से शुरू नहीं होता",
+        "te": "కాల్ చేసిన వ్యక్తి బ్యాంక్ అని చెబుతున్నారు, కానీ నంబర్ 1600తో మొదలవడం లేదు"
+      },
+      "why": {
+        "en": "Banks must call customers from numbers starting with 1600. This call is from an ordinary number.",
+        "hi": "बैंकों को ग्राहकों को 1600 से शुरू होने वाले नंबरों से ही कॉल करना होता है। यह कॉल साधारण नंबर से है।",
+        "te": "బ్యాంకులు కస్టమర్లకు 1600తో మొదలయ్యే నంబర్ల నుండి మాత్రమే కాల్ చేయాలి. ఈ కాల్ సాధారణ నంబర్ నుండి వచ్చింది."
+      }
+    },
+    {
+      "id": "R4",
+      "points": 70,
+      "title": {
+        "en": "Fake look-alike website link",
+        "hi": "नकली मिलती-जुलती वेबसाइट का लिंक",
+        "te": "నకిలీ వెబ్‌సైట్ లింక్"
+      },
+      "why": {
+        "en": "This link imitates {brand} but is not its real website.",
+        "hi": "यह लिंक {brand} की नकल करता है, पर उसकी असली वेबसाइट नहीं है।",
+        "te": "ఈ లింక్ {brand}ను అనుకరిస్తోంది, కానీ ఇది అసలు వెబ్‌సైట్ కాదు."
+      }
+    },
+    {
+      "id": "R5",
+      "points": 30,
+      "title": {
+        "en": "Website was created only days ago",
+        "hi": "वेबसाइट कुछ ही दिन पहले बनी है",
+        "te": "వెబ్‌సైట్ కొద్ది రోజుల క్రితమే సృష్టించబడింది"
+      },
+      "why": {
+        "en": "The website in this message is less than 30 days old. Scam sites are usually brand new.",
+        "hi": "इस संदेश की वेबसाइट 30 दिन से कम पुरानी है। ठगी की साइटें अक्सर बिल्कुल नई होती हैं।",
+        "te": "ఈ సందేశంలోని వెబ్‌సైట్ 30 రోజుల కంటే కొత్తది. మోసపూరిత సైట్లు సాధారణంగా కొత్తవే."
+      }
+    },
+    {
+      "id": "R6",
+      "points": 90,
+      "title": {
+        "en": "Link is on Google's dangerous-site list",
+        "hi": "लिंक Google की खतरनाक साइटों की सूची में है",
+        "te": "ఈ లింక్ Google ప్రమాదకర సైట్ల జాబితాలో ఉంది"
+      },
+      "why": {
+        "en": "Google Safe Browsing has marked this link as dangerous.",
+        "hi": "Google Safe Browsing ने इस लिंक को खतरनाक बताया है।",
+        "te": "Google Safe Browsing ఈ లింక్‌ను ప్రమాదకరమని గుర్తించింది."
+      }
+    },
+    {
+      "id": "R7",
+      "points": 90,
+      "title": {
+        "en": "Asks you to scan or enter your PIN to \"receive\" money",
+        "hi": "पैसे \"पाने\" के लिए स्कैन करने या पिन डालने को कह रहा है",
+        "te": "డబ్బు \"అందుకోవడానికి\" స్కాన్ చేయమని లేదా పిన్ ఎంటర్ చేయమని అడుగుతోంది"
+      },
+      "why": {
+        "en": "You never need to scan a QR code or enter your UPI PIN to receive money. Doing so sends your money out.",
+        "hi": "पैसे पाने के लिए कभी QR स्कैन करने या UPI पिन डालने की ज़रूरत नहीं होती। ऐसा करने से आपके पैसे चले जाते हैं।",
+        "te": "డబ్బు అందుకోవడానికి QR స్కాన్ చేయడం లేదా UPI పిన్ ఎంటర్ చేయడం ఎప్పుడూ అవసరం లేదు. అలా చేస్తే మీ డబ్బు పోతుంది."
+      }
+    },
+    {
+      "id": "R8",
+      "points": 50,
+      "title": {
+        "en": "Payment goes to a person, not the organisation named",
+        "hi": "भुगतान संस्था को नहीं, किसी व्यक्ति को जा रहा है",
+        "te": "చెల్లింపు సంస్థకు కాదు, ఒక వ్యక్తికి వెళ్తోంది"
+      },
+      "why": {
+        "en": "The message claims to be from {brand}, but the UPI ID belongs to someone else.",
+        "hi": "संदेश खुद को {brand} का बताता है, लेकिन UPI आईडी किसी और की है।",
+        "te": "సందేశం {brand} నుండి అని చెబుతోంది, కానీ UPI ఐడీ వేరొకరిది."
+      }
+    },
+    {
+      "id": "R9",
+      "points": 80,
+      "title": {
+        "en": "Asks you to install an app file (APK)",
+        "hi": "ऐप फ़ाइल (APK) इंस्टॉल करने को कह रहा है",
+        "te": "యాప్ ఫైల్ (APK) ఇన్‌స్టాల్ చేయమని అడుగుతోంది"
+      },
+      "why": {
+        "en": "Installing an APK from a message can give a stranger full control of your phone and bank apps.",
+        "hi": "संदेश से आई APK इंस्टॉल करने पर कोई अनजान व्यक्ति आपके फ़ोन और बैंक ऐप पर पूरा नियंत्रण पा सकता है।",
+        "te": "సందేశంలో వచ్చిన APK ఇన్‌స్టాల్ చేస్తే, అపరిచితులు మీ ఫోన్ మరియు బ్యాంక్ యాప్‌లను పూర్తిగా నియంత్రించగలరు."
+      }
+    },
+    {
+      "id": "R10",
+      "points": 90,
+      "title": {
+        "en": "Asks for screen sharing or a remote-control app",
+        "hi": "स्क्रीन शेयरिंग या रिमोट-कंट्रोल ऐप की माँग",
+        "te": "స్క్రీన్ షేరింగ్ లేదా రిమోట్ కంట్రోల్ యాప్ అడుగుతోంది"
+      },
+      "why": {
+        "en": "AnyDesk, TeamViewer and screen sharing let the other person see your OTPs and operate your bank app.",
+        "hi": "AnyDesk, TeamViewer और स्क्रीन शेयरिंग से सामने वाला आपके OTP देख सकता है और आपका बैंक ऐप चला सकता है।",
+        "te": "AnyDesk, TeamViewer మరియు స్క్రీన్ షేరింగ్ ద్వారా అవతలి వ్యక్తి మీ OTPలను చూడగలరు, మీ బ్యాంక్ యాప్‌ను నడపగలరు."
+      }
+    },
+    {
+      "id": "R11",
+      "points": 50,
+      "title": {
+        "en": "Uses authority and threats to scare you",
+        "hi": "अधिकारी बनकर धमकी देकर डरा रहा है",
+        "te": "అధికారుల పేరుతో బెదిరించి భయపెడుతోంది"
+      },
+      "why": {
+        "en": "Real police, CBI or courts never threaten arrest over a call or message, and never ask you to keep it secret.",
+        "hi": "असली पुलिस, सीबीआई या अदालत कभी कॉल या संदेश पर गिरफ़्तारी की धमकी नहीं देती, और न ही बात छिपाने को कहती है।",
+        "te": "నిజమైన పోలీసులు, సీబీఐ లేదా కోర్టులు కాల్ లేదా మెసేజ్ ద్వారా అరెస్ట్ చేస్తామని ఎప్పుడూ బెదిరించవు, రహస్యంగా ఉంచమని అడగవు."
+      }
+    },
+    {
+      "id": "R12",
+      "points": 20,
+      "title": {
+        "en": "Unexpected international number",
+        "hi": "अनपेक्षित विदेशी नंबर",
+        "te": "ఊహించని విదేశీ నంబర్"
+      },
+      "why": {
+        "en": "This came from a number outside India. Indian banks and police do not contact you from foreign numbers.",
+        "hi": "यह भारत के बाहर के नंबर से आया है। भारतीय बैंक और पुलिस विदेशी नंबरों से संपर्क नहीं करते।",
+        "te": "ఇది భారతదేశం వెలుపలి నంబర్ నుండి వచ్చింది. భారతీయ బ్యాంకులు, పోలీసులు విదేశీ నంబర్ల నుండి సంప్రదించరు."
+      }
+    },
+    {
+      "id": "R13",
+      "points": 25,
+      "title": {
+        "en": "Text was disguised to dodge filters",
+        "hi": "फ़िल्टर से बचने के लिए संदेश को छिपाया गया है",
+        "te": "ఫిల్టర్లను తప్పించుకోవడానికి అక్షరాలను మార్చారు"
+      },
+      "why": {
+        "en": "The message hides or swaps letters (like \"acc0unt\" or invisible characters). Genuine senders never do this.",
+        "hi": "संदेश में अक्षर छिपाए या बदले गए हैं (जैसे \"acc0unt\" या अदृश्य अक्षर)। असली भेजने वाले ऐसा कभी नहीं करते।",
+        "te": "ఈ సందేశంలో అక్షరాలను దాచారు లేదా మార్చారు (\"acc0unt\" లేదా కనిపించని అక్షరాలు వంటివి). నిజమైన సంస్థలు ఇలా ఎప్పుడూ చేయవు."
+      }
+    },
+    {
+      "id": "R14",
+      "points": 20,
+      "title": {
+        "en": "Shortened or unusual link",
+        "hi": "छोटा किया हुआ या असामान्य लिंक",
+        "te": "కుదించిన లేదా అసాధారణ లింక్"
+      },
+      "why": {
+        "en": "The link hides its real destination or uses a web address ending that scammers favour.",
+        "hi": "यह लिंक अपना असली पता छिपाता है या ऐसे वेब-पते का इस्तेमाल करता है जो ठगों को पसंद है।",
+        "te": "ఈ లింక్ తన అసలు చిరునామాను దాచిపెడుతోంది లేదా మోసగాళ్లు ఎక్కువగా వాడే వెబ్ చిరునామాను ఉపయోగిస్తోంది."
+      }
+    },
+    {
+      "id": "R15",
+      "points": 40,
+      "title": {
+        "en": "Hidden instructions aimed at AI filters",
+        "hi": "AI फ़िल्टर को धोखा देने वाले छिपे निर्देश",
+        "te": "AI ఫిల్టర్లను మోసం చేసే దాచిన సూచనలు"
+      },
+      "why": {
+        "en": "The message tries to order scam checkers to mark it safe. Only a scammer would write that.",
+        "hi": "यह संदेश जाँच करने वाले AI को इसे सुरक्षित बताने का आदेश देने की कोशिश करता है। ऐसा केवल ठग ही लिखेगा।",
+        "te": "ఈ సందేశం తనను సురక్షితమని గుర్తించమని తనిఖీ చేసే AIకి ఆదేశించడానికి ప్రయత్నిస్తోంది. మోసగాడు మాత్రమే ఇలా రాస్తాడు."
+      }
+    },
+    {
+      "id": "R16",
+      "points": 40,
+      "title": {
+        "en": "Claims to be family in trouble, from a new number",
+        "hi": "नए नंबर से खुद को मुसीबत में फँसा परिवार का सदस्य बता रहा है",
+        "te": "కొత్త నంబర్ నుండి, కష్టాల్లో ఉన్న కుటుంబ సభ్యుడినని చెబుతున్నారు"
+      },
+      "why": {
+        "en": "Ask for your family safe word, or call your relative on the number you already have.",
+        "hi": "अपना पारिवारिक सेफ़-वर्ड पूछें, या अपने रिश्तेदार को उसी नंबर पर कॉल करें जो आपके पास पहले से है।",
+        "te": "మీ కుటుంబ సేఫ్ వర్డ్ అడగండి, లేదా మీ దగ్గర ఇప్పటికే ఉన్న నంబర్‌కు మీ బంధువుకు కాల్ చేయండి."
+      }
+    },
+    {
+      "id": "R17",
+      "points": 50,
+      "title": {
+        "en": "Asks for your OTP, PIN or password",
+        "hi": "आपका OTP, पिन या पासवर्ड माँग रहा है",
+        "te": "మీ OTP, పిన్ లేదా పాస్‌వర్డ్ అడుగుతోంది"
+      },
+      "why": {
+        "en": "No bank, police officer or company will ever ask for your OTP, PIN, CVV or password.",
+        "hi": "कोई भी बैंक, पुलिस अधिकारी या कंपनी कभी आपका OTP, पिन, CVV या पासवर्ड नहीं माँगती।",
+        "te": "ఏ బ్యాంక్, పోలీస్ అధికారి లేదా కంపెనీ మీ OTP, పిన్, CVV లేదా పాస్‌వర్డ్‌ను ఎప్పుడూ అడగదు."
+      }
+    }
+  ],
+  "stages": [
+    { "stage": 1, "title": { "en": "Contact", "hi": "संपर्क", "te": "సంప్రదింపు" } },
+    { "stage": 2, "title": { "en": "Impersonation", "hi": "नकली पहचान", "te": "నకిలీ గుర్తింపు" } },
+    { "stage": 3, "title": { "en": "Threat or lure", "hi": "धमकी या लालच", "te": "బెదిరింపు లేదా ఆశ" } },
+    { "stage": 4, "title": { "en": "Isolation", "hi": "अकेला करना", "te": "ఒంటరి చేయడం" } },
+    { "stage": 5, "title": { "en": "Payment or access", "hi": "पैसा या एक्सेस", "te": "డబ్బు లేదా యాక్సెస్" } }
+  ],
+  "lexicon": {
+    "contact": [
+      "dear customer", "dear user", "dear consumer", "dear sir", "dear madam", "dear valued",
+      "your parcel", "your package", "your courier", "kyc pending", "kyc is pending",
+      "your number has been", "your mobile number", "your sim", "your account", "your aadhaar",
+      "your pan", "your electricity", "प्रिय ग्राहक", "आपका पार्सल", "आपका खाता", "आपका आधार",
+      "ప్రియమైన కస్టమర్", "మీ పార్సిల్", "మీ ఖాతా", "మీ ఆధార్", "మీ నంబర్"
+    ],
+    "authority": [
+      "police", "crime branch", "cyber cell", "cyber crime", "cybercrime department", "cbi",
+      "enforcement directorate", "narcotics", "ncb", "customs", "customs officer",
+      "income tax department", "rbi", "reserve bank", "trai", "telecom department",
+      "department of telecom", "supreme court", "high court", "court order", "magistrate",
+      "inspector", "sub inspector", "dcp", "ips officer", "interpol", "investigation officer",
+      "thana", "adalat", "पुलिस", "सीबीआई", "क्राइम ब्रांच", "साइबर सेल", "कस्टम", "अदालत",
+      "न्यायालय", "थाना", "इंस्पेक्टर", "प्रवर्तन निदेशालय", "పోలీస్", "పోలీసు", "సీబీఐ",
+      "క్రైమ్ బ్రాంచ్", "సైబర్ క్రైమ్", "కోర్టు", "కస్టమ్స్", "ఇన్‌స్పెక్టర్", "ఇన్స్పెక్టర్"
+    ],
+    "impersonation": [
+      "this is", "i am calling from", "calling from", "i am from", "we are from", "speaking from",
+      "kyc team", "kyc department", "customer care", "customer support", "support team",
+      "verification team", "security team", "head office", "officer speaking",
+      "bol raha hoon", "bol rahi hoon", "se bol raha", "se bol rahi", "ki taraf se",
+      "से बोल रहा", "से बोल रही", "की तरफ से", "कस्टमर केयर", "నుండి మాట్లాడుతున్నాను",
+      "నుండి కాల్ చేస్తున్నాము", "కస్టమర్ కేర్", "nundi matladutunnanu"
+    ],
+    "threat": [
+      "arrest", "arrested", "warrant", "money laundering", "fir registered", "fir has been",
+      "case registered", "case has been registered", "case against you", "legal action",
+      "legal notice", "jail", "imprisonment", "court case", "will be blocked", "has been blocked",
+      "is blocked", "account blocked", "get blocked", "be blocked", "will be suspended",
+      "has been suspended", "be suspended", "will be deactivated", "be deactivated",
+      "will be disconnected", "be disconnected", "power will be", "will be frozen",
+      "has been frozen", "account freeze", "seized", "blacklisted", "illegal items",
+      "illegal parcel", "drugs", "mdma", "fake passports", "linked to", "misused",
+      "giraftar", "band ho jayega", "band ho jayegi", "block ho jayega", "block ho jayegi",
+      "kanuni karwai", "kaat diya jayega", "गिरफ्तार", "गिरफ़्तार", "वारंट", "मनी लॉन्ड्रिंग",
+      "ब्लॉक हो जाएगा", "ब्लॉक कर दिया", "बंद हो जाएगा", "बंद कर दिया जाएगा", "कानूनी कार्रवाई",
+      "जेल", "काट दिया जाएगा", "केस दर्ज", "అరెస్ట్", "వారెంట్", "మనీ లాండరింగ్",
+      "బ్లాక్ అవుతుంది", "బ్లాక్ చేయబడుతుంది", "బ్లాక్ చేయబడింది", "నిలిపివేయబడుతుంది",
+      "కట్ చేయబడుతుంది", "చట్టపరమైన చర్య", "జైలు", "కేసు నమోదు", "block avuthundi",
+      "arrest chestaru", "case namodu"
+    ],
+    "urgency": [
+      "immediately", "urgent", "urgently", "today itself", "within 24 hours", "within 2 hours",
+      "within 30 minutes", "tonight", "last warning", "final notice", "final warning",
+      "expires today", "expire today", "act now", "right now", "turant", "abhi ke abhi",
+      "aaj hi", "तुरंत", "आज ही", "अभी", "अंतिम चेतावनी", "వెంటనే", "ఈరోజే", "ఇప్పుడే",
+      "చివరి హెచ్చరిక", "ventane"
+    ],
+    "lure": [
+      "guaranteed returns", "guaranteed profit", "assured returns", "double your money",
+      "daily profit", "100% profit", "risk free", "risk-free", "you have won", "you won",
+      "lottery", "lucky draw", "lucky winner", "prize money", "cash prize", "free gift",
+      "work from home", "part time job", "part-time job", "earn rs", "earn ₹", "earn daily",
+      "earn upto", "earn up to", "kbc", "congratulations", "ipo allotment", "stock tips",
+      "vip group", "insider tips", "multibagger", "high returns", "cashback of", "reward points",
+      "redeem now", "refund of", "paisa double", "ghar baithe", "लॉटरी", "इनाम", "गारंटीड",
+      "पैसा डबल", "घर बैठे कमाएं", "बधाई", "లాటరీ", "బహుమతి", "గ్యారెంటీ", "డబ్బు రెట్టింపు",
+      "ఇంటి నుండి సంపాదించండి", "అభినందనలు"
+    ],
+    "secrecy": [
+      "do not tell anyone", "don't tell anyone", "dont tell anyone", "do not tell your family",
+      "don't tell your family", "dont tell your family", "do not inform anyone",
+      "don't inform anyone", "do not discuss", "keep this confidential", "keep it confidential",
+      "strictly confidential", "confidential matter", "national security", "do not disconnect",
+      "don't disconnect", "dont disconnect", "stay on the call", "stay on call",
+      "stay on the line", "do not cut the call", "don't cut the call", "do not hang up",
+      "don't hang up", "join the video call", "on video call", "skype", "under surveillance",
+      "digital arrest", "do not contact anyone", "do not leave the room",
+      "kisi ko mat batana", "kisi ko nahi batana", "kisi ko mat bataiye", "call mat katna",
+      "phone mat katna", "line par rahiye", "किसी को मत बताना", "किसी को न बताएं",
+      "किसी को मत बताइए", "कॉल मत काटना", "फोन मत काटना", "गोपनीय", "डिजिटल अरेस्ट",
+      "ఎవరికీ చెప్పకండి", "ఎవరికీ చెప్పొద్దు", "కాల్ కట్ చేయకండి", "కాల్ కట్ చేయొద్దు",
+      "రహస్యంగా ఉంచండి", "డిజిటల్ అరెస్ట్", "evariki cheppakandi", "call cut cheyakandi"
+    ],
+    "payment": [
+      "transfer the amount", "transfer the money", "transfer rs", "transfer ₹", "transfer to",
+      "send money", "send the money", "send rs", "send ₹", "pay now", "pay rs", "pay ₹",
+      "pay the", "processing fee", "registration fee", "security deposit", "clearance fee",
+      "verification account", "safe account", "rbi account", "secure account",
+      "click the link", "click here", "click on the link", "click below", "tap the link",
+      "open the link", "scan the qr", "scan qr", "scan this", "approve the request",
+      "collect request", "accept the request", "rtgs", "install the app", "download the app",
+      "install this", "download this", "update your kyc", "update kyc", "update your pan",
+      "update pan", "verify your account", "paise bhejo", "paise transfer", "link par click",
+      "पैसे भेजें", "पैसे ट्रांसफर", "लिंक पर क्लिक", "भुगतान करें", "డబ్బు పంపండి",
+      "లింక్ క్లిక్ చేయండి", "లింక్ పై క్లిక్", "ట్రాన్స్‌ఫర్ చేయండి", "చెల్లించండి",
+      "dabbulu pampandi"
+    ],
+    "receive": [
+      "receive", "refund", "cashback", "credited to you", "to get the money", "to get your money",
+      "prize money", "winning amount", "you will get", "claim your", "paise milenge",
+      "पैसे पाने", "रिफंड", "కి డబ్బు వస్తుంది", "డబ్బు అందుకోవడానికి", "రీఫండ్"
+    ],
+    "collect": [
+      "scan the qr", "scan qr", "scan this qr", "scan the code", "enter your upi pin",
+      "enter upi pin", "enter your pin", "enter pin", "collect request", "approve the request",
+      "accept the request", "payment request", "qr code", "pin daalo", "pin dalein",
+      "यूपीआई पिन", "क्यूआर", "యూపీఐ పిన్", "క్యూఆర్"
+    ],
+    "remoteAccess": [
+      "anydesk", "teamviewer", "quicksupport", "quick support", "rustdesk", "airdroid",
+      "screen share", "screen sharing", "share your screen", "screenshare", "remote access",
+      "स्क्रीन शेयर", "స్క్రీన్ షేర్"
+    ],
+    "familyClaim": [
+      "this is my new number", "my new number", "new number", "lost my phone", "phone is broken",
+      "phone got damaged", "save this number", "it's me", "its me", "guess who",
+      "mom", "mummy", "dad", "papa", "amma", "nanna", "grandma", "grandpa", "ammamma",
+      "nanamma", "thatha", "beta", "naya number", "नया नंबर", "मम्मी", "पापा",
+      "కొత్త నంబర్", "అమ్మా", "నాన్నా", "అమ్మమ్మా"
+    ],
+    "emergency": [
+      "accident", "hospital", "emergency", "police station", "stuck", "need money",
+      "need rs", "urgent money", "send me", "help me", "एक्सीडेंट", "अस्पताल", "पैसे चाहिए",
+      "యాక్సిడెంట్", "ఆసుపత్రి", "హాస్పిటల్", "డబ్బు కావాలి"
+    ],
+    "bankAction": [
+      "kyc", "otp", "blocked", "block", "suspend", "suspended", "update", "verify",
+      "verification", "pan", "expire", "expired", "deactivate", "deactivated", "netbanking",
+      "net banking", "reward points", "debit card", "credit card", "केवाईसी", "ओटीपी",
+      "కేవైసీ", "ఓటీపీ"
+    ],
+    "transactional": [
+      "otp", "debited", "credited", "kyc", "account", "a/c", "statement", "transaction",
+      "ओटीपी", "खाता", "ఓటీపీ", "ఖాతా"
+    ],
+    "bankWords": ["bank", "banking", "बैंक", "బ్యాంక్", "బ్యాంకు"],
+    "awareness": [
+      "beware", "be aware of", "be alert", "stay alert", "stay safe", "scam alert", "fraud alert",
+      "do not fall", "don't fall", "never ask", "never asks", "will never ask", "never call",
+      "fake call", "fake calls", "fake message", "fake messages", "awareness", "report such",
+      "call 1930", "dial 1930", "cybercrime.gov.in", "sanchar saathi", "सावधान रहें",
+      "जागरूक", "सतर्क रहें", "అప్రమత్తంగా ఉండండి", "జాగ్రత్తగా ఉండండి", "మోసపోకండి"
+    ]
+  },
+  "secretAsk": {
+    "verbs": [
+      "share", "send", "tell", "give", "provide", "enter", "confirm", "forward", "read out",
+      "batao", "bataiye", "bataye", "batayein", "bhejo", "bhejiye", "cheppandi", "pampandi",
+      "बताएं", "बताइए", "बताओ", "भेजें", "भेजो", "చెప్పండి", "పంపండి", "ఎంటర్ చేయండి"
+    ],
+    "secrets": [
+      "otp", "one time password", "upi pin", "atm pin", "mpin", "pin number", "cvv",
+      "card number", "password", "passcode", "ओटीपी", "पिन", "पासवर्ड", "ఓటీపీ", "పిన్",
+      "పాస్‌వర్డ్"
+    ],
+    "negations": [
+      "do not", "don't", "dont", "never", "not to", "mat ", "kabhi", "na karein", "nahi",
+      "कभी", "मत", "न करें", "नहीं", "ఎప్పుడూ", "వద్దు", "కండి", "కూడదు"
+    ]
+  },
+  "injection": [
+    "ignore previous instructions", "ignore all previous instructions", "ignore prior instructions",
+    "ignore the above", "ignore above instructions", "disregard previous instructions",
+    "disregard all previous", "forget previous instructions", "forget your instructions",
+    "new instructions", "system prompt", "system message", "you are now", "you are an ai",
+    "as an ai", "act as", "classify as safe", "classify this as safe", "classify it as safe",
+    "classify this message as safe", "mark as safe", "mark this as safe", "mark it as safe",
+    "mark this message as safe", "label as safe", "respond with safe", "reply with safe",
+    "output safe", "verdict safe", "verdict: safe", "verdict is safe", "this message is safe",
+    "this is a safe message", "not a scam", "is not spam", "do not flag", "don't flag",
+    "score 0", "score: 0", "risk score 0", "[system]", "<system>", "</system>", "### instruction",
+    "assistant:", "override", "पिछले निर्देशों को अनदेखा", "सुरक्षित घोषित",
+    "మునుపటి సూచనలను విస్మరించండి", "సురక్షితంగా గుర్తించండి"
+  ],
+  "links": {
+    "shorteners": [
+      "bit.ly", "tinyurl.com", "cutt.ly", "rb.gy", "is.gd", "t.ly", "shorturl.at", "ow.ly",
+      "tiny.cc", "rebrand.ly", "goo.su", "s.id", "urlz.fr", "qrco.de", "lnkd.in", "t.co"
+    ],
+    "riskyTlds": [
+      "xyz", "top", "click", "live", "online", "shop", "site", "buzz", "icu", "cyou", "club",
+      "work", "vip", "cc", "cfd", "sbs", "rest", "fun", "monster", "quest", "lol", "info",
+      "link", "store", "pro", "today", "world", "life"
+    ],
+    "trustedSuffixes": ["gov.in", "nic.in", "bank.in", "res.in", "ac.in", "edu.in"],
+    "multiPartTlds": [
+      "co.in", "gov.in", "nic.in", "org.in", "net.in", "ac.in", "edu.in", "res.in", "bank.in",
+      "firm.in", "gen.in", "ind.in", "co.uk", "org.uk", "com.au", "co.za", "com.sg", "com.my"
+    ],
+    "knownTlds": [
+      "com", "in", "org", "net", "gov", "edu", "io", "co", "me", "app", "dev", "ai", "sbi",
+      "bank", "ly", "gd", "gy", "at", "fr", "su", "id", "de", "uk", "us", "ru", "cn", "tk",
+      "ml", "ga", "cf", "gq", "pw", "ws", "biz", "mobi", "tech", "page", "apk"
+    ]
+  },
+  "brands": [
+    { "id": "sbi", "name": "State Bank of India", "kind": "bank", "names": ["sbi", "state bank", "yono", "एसबीआई", "ఎస్‌బీఐ", "ఎస్బీఐ"], "keys": ["sbi", "yono", "statebank"], "domains": ["sbi.co.in", "onlinesbi.sbi", "sbi.bank.in", "sbicard.com", "sbimf.com", "sbilife.co.in"] },
+    { "id": "hdfc", "name": "HDFC Bank", "kind": "bank", "names": ["hdfc"], "keys": ["hdfc"], "domains": ["hdfcbank.com", "hdfc.bank.in", "hdfcbank.bank.in", "hdfclife.com", "hdfcsec.com", "hdfcergo.com"] },
+    { "id": "icici", "name": "ICICI Bank", "kind": "bank", "names": ["icici"], "keys": ["icici"], "domains": ["icicibank.com", "icici.bank.in", "icicibank.bank.in", "icicidirect.com", "iciciprulife.com", "icicilombard.com"] },
+    { "id": "axis", "name": "Axis Bank", "kind": "bank", "names": ["axis bank"], "keys": ["axisbank", "axisbnk"], "domains": ["axisbank.com", "axis.bank.in", "axisbank.bank.in"] },
+    { "id": "pnb", "name": "Punjab National Bank", "kind": "bank", "names": ["pnb", "punjab national"], "keys": ["pnbindia", "pnbbank", "punjabnational"], "domains": ["pnbindia.in", "pnb.bank.in", "netpnb.com"] },
+    { "id": "bob", "name": "Bank of Baroda", "kind": "bank", "names": ["bank of baroda"], "keys": ["bankofbaroda", "bobworld", "barodabank"], "domains": ["bankofbaroda.in", "bankofbaroda.bank.in", "bobibanking.com"] },
+    { "id": "canara", "name": "Canara Bank", "kind": "bank", "names": ["canara"], "keys": ["canarabank", "canara"], "domains": ["canarabank.com", "canarabank.bank.in", "canarabank.in"] },
+    { "id": "union", "name": "Union Bank of India", "kind": "bank", "names": ["union bank"], "keys": ["unionbank"], "domains": ["unionbankofindia.co.in", "unionbankofindia.bank.in"] },
+    { "id": "kotak", "name": "Kotak Mahindra Bank", "kind": "bank", "names": ["kotak"], "keys": ["kotak"], "domains": ["kotak.com", "kotak.bank.in", "kotaksecurities.com"] },
+    { "id": "indusind", "name": "IndusInd Bank", "kind": "bank", "names": ["indusind"], "keys": ["indusind"], "domains": ["indusind.com", "indusind.bank.in"] },
+    { "id": "idfc", "name": "IDFC FIRST Bank", "kind": "bank", "names": ["idfc"], "keys": ["idfcfirst", "idfcbank"], "domains": ["idfcfirstbank.com", "idfcfirst.bank.in"] },
+    { "id": "yes", "name": "YES Bank", "kind": "bank", "names": ["yes bank"], "keys": ["yesbank"], "domains": ["yesbank.in", "yes.bank.in", "yesbank.bank.in"] },
+    { "id": "boi", "name": "Bank of India", "kind": "bank", "names": ["bank of india"], "keys": ["bankofindia"], "domains": ["bankofindia.co.in", "bankofindia.bank.in"] },
+    { "id": "indianbank", "name": "Indian Bank", "kind": "bank", "names": ["indian bank"], "keys": ["indianbank"], "domains": ["indianbank.in", "indianbank.bank.in", "indianbank.net.in"] },
+    { "id": "uidai", "name": "UIDAI (Aadhaar)", "kind": "government", "names": ["uidai", "aadhaar", "aadhar", "आधार", "ఆధార్"], "keys": ["uidai", "aadhaar", "aadhar"], "domains": ["uidai.gov.in", "myaadhaar.uidai.gov.in"] },
+    { "id": "incometax", "name": "Income Tax Department", "kind": "government", "names": ["income tax", "itr refund", "tax refund"], "keys": ["incometax", "itrefund", "taxrefund"], "domains": ["incometax.gov.in", "incometaxindia.gov.in"] },
+    { "id": "indiapost", "name": "India Post", "kind": "courier", "names": ["india post", "indiapost", "speed post"], "keys": ["indiapost", "indpost", "speedpost"], "domains": ["indiapost.gov.in"] },
+    { "id": "parivahan", "name": "Parivahan e-Challan", "kind": "government", "names": ["e-challan", "echallan", "traffic challan", "challan", "rto", "parivahan"], "keys": ["parivahan", "echallan", "challan", "mparivahan"], "domains": ["parivahan.gov.in", "echallan.parivahan.gov.in", "echallan.tspolice.gov.in"] },
+    { "id": "epfo", "name": "EPFO", "kind": "government", "names": ["epfo", "provident fund"], "keys": ["epfo", "epfindia"], "domains": ["epfindia.gov.in"] },
+    { "id": "npci", "name": "NPCI / UPI", "kind": "payments", "names": ["npci", "bhim upi"], "keys": ["npci", "bhimupi"], "domains": ["npci.org.in", "bhimupi.org.in"] },
+    { "id": "tgspdcl", "name": "Electricity Board", "kind": "utility", "names": ["electricity", "power supply", "bijli", "tgspdcl", "tsspdcl", "बिजली", "విద్యుత్", "కరెంట్"], "keys": ["tgspdcl", "tsspdcl", "electricitybill", "bijlibill"], "domains": ["tgsouthernpower.org", "tgnpdcl.com", "tssouthernpower.com"] },
+    { "id": "irctc", "name": "IRCTC", "kind": "government", "names": ["irctc"], "keys": ["irctc"], "domains": ["irctc.co.in", "irctc.com"] },
+    { "id": "lic", "name": "LIC of India", "kind": "insurance", "names": ["lic policy", "lic of india"], "keys": ["licindia", "licpolicy"], "domains": ["licindia.in"] },
+    { "id": "paytm", "name": "Paytm", "kind": "payments", "names": ["paytm"], "keys": ["paytm"], "domains": ["paytm.com", "paytmbank.com", "paytm.in"] },
+    { "id": "phonepe", "name": "PhonePe", "kind": "payments", "names": ["phonepe", "phone pe"], "keys": ["phonepe", "phonpe"], "domains": ["phonepe.com"] },
+    { "id": "gpay", "name": "Google Pay", "kind": "payments", "names": ["google pay", "gpay"], "keys": ["googlepay", "gpay"], "domains": ["pay.google.com", "google.com"] },
+    { "id": "amazon", "name": "Amazon", "kind": "commerce", "names": ["amazon"], "keys": ["amazon", "amzn"], "domains": ["amazon.in", "amazon.com", "amzn.in", "amzn.to"] },
+    { "id": "flipkart", "name": "Flipkart", "kind": "commerce", "names": ["flipkart"], "keys": ["flipkart"], "domains": ["flipkart.com", "fkrt.it"] },
+    { "id": "fedex", "name": "FedEx", "kind": "courier", "names": ["fedex", "fed ex"], "keys": ["fedex"], "domains": ["fedex.com"] },
+    { "id": "bluedart", "name": "Blue Dart", "kind": "courier", "names": ["blue dart", "bluedart"], "keys": ["bluedart"], "domains": ["bluedart.com"] },
+    { "id": "dhl", "name": "DHL", "kind": "courier", "names": ["dhl"], "keys": ["dhl"], "domains": ["dhl.com", "dhl.co.in"] },
+    { "id": "jio", "name": "Jio", "kind": "telecom", "names": ["jio"], "keys": ["jiorecharge", "myjio"], "domains": ["jio.com"] },
+    { "id": "airtel", "name": "Airtel", "kind": "telecom", "names": ["airtel"], "keys": ["airtel"], "domains": ["airtel.in", "airtel.com"] },
+    { "id": "trai", "name": "TRAI", "kind": "government", "names": ["trai", "telecom regulatory"], "keys": ["trai"], "domains": ["trai.gov.in"] },
+    { "id": "rbi", "name": "Reserve Bank of India", "kind": "government", "names": ["rbi", "reserve bank"], "keys": ["rbi", "reservebank"], "domains": ["rbi.org.in"] },
+    { "id": "cybercrime", "name": "National Cyber Crime Portal", "kind": "government", "names": ["cybercrime portal", "1930"], "keys": ["cybercrime"], "domains": ["cybercrime.gov.in"] }
+  ],
+  "remoteAccessPackages": [
+    "com.anydesk.anydeskandroid",
+    "com.teamviewer.quicksupport.market",
+    "com.teamviewer.teamviewer.market.mobile",
+    "com.carriez.flutter_hbb"
+  ]
+}
