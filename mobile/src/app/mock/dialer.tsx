@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { buildScript } from '@satark/shared';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -8,7 +9,6 @@ import { DemoBanner } from '@/components/DemoBanner';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { goBack } from '@/components/ui/Screen';
-import { buildScript } from '@/features/complaint/content';
 import { advanceStage } from '@/features/complaint/tracker';
 import { useT } from '@/i18n';
 import { selectComplaint, useComplaints } from '@/store/complaints';

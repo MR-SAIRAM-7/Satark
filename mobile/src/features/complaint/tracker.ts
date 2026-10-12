@@ -1,4 +1,4 @@
-import { formatInr } from '@satark/shared';
+import { FIR_STAGES, formatInr, STAGE_MESSAGE } from '@satark/shared';
 
 import { api } from '@/services/api';
 import { useComplaints } from '@/store/complaints';
@@ -6,7 +6,6 @@ import { useSettings } from '@/store/settings';
 import { newId } from '@/store/storage';
 import type { FirStageId, WhatsAppMessage } from '@/types';
 
-import { FIR_STAGES, STAGE_MESSAGE } from './content';
 
 /**
  * FIR tracker. Each stage reached is recorded on the complaint and announced to

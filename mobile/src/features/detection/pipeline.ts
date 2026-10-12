@@ -142,6 +142,7 @@ export async function processIncoming(item: IncomingItem, options: ProcessOption
     text: maskedText,
     lang: settings.lang,
     thread_id: threadId,
+    client_id: id,
     context: {
       on_call: options.context?.onCall,
       expecting_to_receive: options.context?.expectingToReceive,

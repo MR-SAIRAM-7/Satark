@@ -15,3 +15,6 @@ export * from './classify';
 export * from './explanations';
 export * from './verdict';
 export * from './engine';
+export * from './prompt';
+export * from './indicators';
+export * from './complaint';

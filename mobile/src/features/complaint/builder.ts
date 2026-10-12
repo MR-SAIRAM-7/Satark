@@ -1,4 +1,4 @@
-import { formatInr, type ParsedTxn } from '@satark/shared';
+import { buildNarrative, buildSummary, formatInr, type ParsedTxn } from '@satark/shared';
 
 import { translate } from '@/i18n';
 import { sha256 } from '@/services/hash';
@@ -11,7 +11,6 @@ import { newId } from '@/store/storage';
 import { useUi } from '@/store/ui';
 import type { CheckRecord, Complaint, EvidenceItem } from '@/types';
 
-import { buildNarrative, buildSummary } from './content';
 import { renderKit } from './pdf';
 import { advanceStage } from './tracker';
 

@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { formatInr, SCAM_TYPES } from '@satark/shared';
+import { dateTime, formatInr, SCAM_TYPES } from '@satark/shared';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState, Field } from '@/components/ui/primitives';
 import { goBack, Screen } from '@/components/ui/Screen';
-import { dateTime } from '@/features/complaint/content';
 import { demoAckNumber, saveAcknowledgement } from '@/features/complaint/tracker';
 import { useT } from '@/i18n';
 import { selectComplaint, useComplaints } from '@/store/complaints';

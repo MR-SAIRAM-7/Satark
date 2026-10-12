@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { formatInr, SCAM_TYPES } from '@satark/shared';
+import { buildScript, buildZeroFirLetter, formatInr, SCAM_TYPES, STAGE_MESSAGE } from '@satark/shared';
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -12,7 +12,6 @@ import { EmptyState, SectionHeader } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { CYBERCRIME_PORTAL, HELPLINE_1930 } from '@/data/directory';
 import { buildComplaint } from '@/features/complaint/builder';
-import { buildScript, buildZeroFirLetter, STAGE_MESSAGE } from '@/features/complaint/content';
 import { openKit } from '@/features/complaint/pdf';
 import { advanceStage, sendWhatsAppUpdate } from '@/features/complaint/tracker';
 import { useLocalized, useT } from '@/i18n';

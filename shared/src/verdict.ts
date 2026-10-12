@@ -65,6 +65,8 @@ export const analyzeRequestSchema = z.object({
   lang: z.string().min(2).max(5).default('te'),
   /** Conversation key, so the Kill Chain meter can climb across messages. */
   thread_id: z.string().max(64).optional(),
+  /** The phone's own id for this check, so a later report can point back to it. */
+  client_id: z.string().max(64).optional(),
   context: z
     .object({
       on_call: z.boolean().optional(),

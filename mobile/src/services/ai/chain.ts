@@ -1,6 +1,5 @@
-import { llmVerdictSchema, type AnalyzeRequest, type LlmVerdict } from '@satark/shared';
+import { buildUserPrompt, parseLlmVerdict, SYSTEM_PROMPT, type AnalyzeRequest, type LlmVerdict } from '@satark/shared';
 
-import { buildUserPrompt, SYSTEM_PROMPT } from './prompt';
 import { gemini, openRouter, sarvam, type LlmProvider } from './providers';
 
 /** Gemini first, OpenRouter second, Sarvam for Indian-language reasoning third. */
@@ -12,18 +11,6 @@ const TIMEOUT_MS = 6000;
 export interface ChainResult {
   verdict: LlmVerdict;
   engine: string;
-}
-
-function parseVerdict(raw: string): LlmVerdict | null {
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
-  try {
-    const parsed = llmVerdictSchema.safeParse(JSON.parse(raw.slice(start, end + 1)));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -38,7 +25,7 @@ export async function runLlmChain(req: AnalyzeRequest): Promise<ChainResult | nu
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const verdict = parseVerdict(await provider.complete(SYSTEM_PROMPT, user, controller.signal));
+      const verdict = parseLlmVerdict(await provider.complete(SYSTEM_PROMPT, user, controller.signal));
       if (verdict) return { verdict, engine: provider.name };
     } catch {
       // Fall through to the next provider.

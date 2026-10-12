@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { FIR_STAGES } from '@satark/shared';
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -7,7 +8,6 @@ import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Field, Toggle } from '@/components/ui/primitives';
-import { FIR_STAGES } from '@/features/complaint/content';
 import { advanceDemo, saveAcknowledgement } from '@/features/complaint/tracker';
 import { useT } from '@/i18n';
 import { useComplaints } from '@/store/complaints';

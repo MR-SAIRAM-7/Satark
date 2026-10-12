@@ -1,4 +1,4 @@
-import { formatInr, SCAM_TYPES } from '@satark/shared';
+import { FIR_STAGES, formatInr, SCAM_TYPES } from '@satark/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState, IconBadge, SectionHeader } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
-import { FIR_STAGES } from '@/features/complaint/content';
 import { useLocalized, useT } from '@/i18n';
 import { useChecks } from '@/store/checks';
 import { useComplaints } from '@/store/complaints';

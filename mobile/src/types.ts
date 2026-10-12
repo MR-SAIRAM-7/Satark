@@ -1,6 +1,7 @@
 import type {
   AnalyzeResponse,
   Evidence,
+  FirStageId,
   Indicator,
   IndicatorType,
   ParsedTxn,
@@ -90,14 +91,7 @@ export interface BlockedCall {
   reportCount: number;
 }
 
-export type FirStageId =
-  | 'kit_ready'
-  | 'helpline_1930'
-  | 'portal_filed'
-  | 'acknowledged'
-  | 'bank_hold'
-  | 'zero_fir'
-  | 'io_assigned';
+export type { FirStageId };
 
 export interface FirEvent {
   stage: FirStageId;
