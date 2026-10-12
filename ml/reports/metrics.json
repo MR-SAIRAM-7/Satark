@@ -1,14 +1,14 @@
 {
-  "trained_at": "2026-10-12T13:51:59+00:00",
+  "trained_at": "2026-10-12T16:12:12+00:00",
   "corpus": {
-    "train": 3652,
-    "test": 1062,
-    "attack": 1372,
-    "test_templates_unseen_in_training": 35
+    "train": 3860,
+    "test": 1167,
+    "attack": 1365,
+    "test_templates_unseen_in_training": 41
   },
   "model": {
-    "C": 0.5,
-    "features": 11957,
+    "C": 8,
+    "features": 12000,
     "analyzer": "char_wb",
     "ngram_range": "(3, 5)",
     "lowercase": "False",
@@ -16,34 +16,34 @@
     "min_df": "3",
     "max_features": "12000"
   },
-  "cv_average_precision": 0.9643,
-  "test_average_precision": 0.9993,
+  "cv_average_precision": 0.9597,
+  "test_average_precision": 0.9884,
   "test_at_suspicious": {
     "threshold": 40,
-    "precision": 0.9274,
-    "recall": 1.0,
-    "f1": 0.9624,
-    "false_positive_rate": 0.097,
-    "accuracy": 0.9567,
+    "precision": 0.9666,
+    "recall": 0.9402,
+    "f1": 0.9532,
+    "false_positive_rate": 0.0326,
+    "accuracy": 0.9537,
     "confusion_matrix": {
-      "tn": 428,
-      "fp": 46,
-      "fn": 0,
-      "tp": 588
+      "tn": 563,
+      "fp": 19,
+      "fn": 35,
+      "tp": 550
     }
   },
   "test_at_scam": {
     "threshold": 70,
-    "precision": 1.0,
-    "recall": 0.682,
-    "f1": 0.8109,
-    "false_positive_rate": 0.0,
-    "accuracy": 0.8239,
+    "precision": 0.9624,
+    "recall": 0.8308,
+    "f1": 0.8917,
+    "false_positive_rate": 0.0326,
+    "accuracy": 0.8989,
     "confusion_matrix": {
-      "tn": 474,
-      "fp": 0,
-      "fn": 187,
-      "tp": 401
+      "tn": 563,
+      "fp": 19,
+      "fn": 99,
+      "tp": 486
     }
   },
   "recall_by_scam_type": {
@@ -53,7 +53,7 @@
     },
     "digital_arrest": {
       "n": 80,
-      "recall_at_suspicious": 1.0
+      "recall_at_suspicious": 0.95
     },
     "electricity": {
       "n": 40,
@@ -61,7 +61,7 @@
     },
     "family_emergency": {
       "n": 40,
-      "recall_at_suspicious": 1.0
+      "recall_at_suspicious": 0.225
     },
     "investment": {
       "n": 40,
@@ -92,7 +92,7 @@
       "recall_at_suspicious": 1.0
     },
     "sim_block": {
-      "n": 28,
+      "n": 25,
       "recall_at_suspicious": 1.0
     },
     "upi_collect": {
@@ -101,208 +101,208 @@
     }
   },
   "under_attack": {
-    "recall_with_layer1": 1.0,
-    "recall_without_layer1": 0.9927,
+    "recall_with_layer1": 0.937,
+    "recall_without_layer1": 0.9187,
     "by_disguise": {
       "combined": {
-        "n": 196,
-        "recall_with_layer1": 1.0,
-        "recall_without_layer1": 0.9694
+        "n": 195,
+        "recall_with_layer1": 0.9282,
+        "recall_without_layer1": 0.8256
       },
       "emoji_padding": {
-        "n": 196,
-        "recall_with_layer1": 1.0,
-        "recall_without_layer1": 1.0
+        "n": 195,
+        "recall_with_layer1": 0.9179,
+        "recall_without_layer1": 0.9179
       },
       "homoglyphs": {
-        "n": 196,
-        "recall_with_layer1": 1.0,
-        "recall_without_layer1": 0.9898
+        "n": 195,
+        "recall_with_layer1": 0.9282,
+        "recall_without_layer1": 0.9026
       },
       "leetspeak": {
-        "n": 196,
-        "recall_with_layer1": 1.0,
-        "recall_without_layer1": 1.0
+        "n": 195,
+        "recall_with_layer1": 0.9282,
+        "recall_without_layer1": 0.9179
       },
       "prompt_injection": {
-        "n": 196,
+        "n": 195,
         "recall_with_layer1": 1.0,
         "recall_without_layer1": 1.0
       },
       "spacing": {
-        "n": 196,
-        "recall_with_layer1": 1.0,
-        "recall_without_layer1": 1.0
+        "n": 195,
+        "recall_with_layer1": 0.9282,
+        "recall_without_layer1": 0.9282
       },
       "zero_width": {
-        "n": 196,
-        "recall_with_layer1": 1.0,
-        "recall_without_layer1": 0.9898
+        "n": 195,
+        "recall_with_layer1": 0.9282,
+        "recall_without_layer1": 0.9385
       }
     }
   },
   "top_scam_features": [
     [
       "xxxxx",
-      1.58
+      3.474
     ],
     [
       "xxx",
-      1.191
+      2.813
     ],
     [
       "xxxx",
-      1.191
+      2.754
     ],
     [
       "://",
-      0.997
+      2.13
     ],
     [
       "ins",
-      0.958
-    ],
-    [
-      " htt",
-      0.89
-    ],
-    [
-      "ttp",
-      0.89
-    ],
-    [
-      " http",
-      0.89
-    ],
-    [
-      " ht",
-      0.89
+      2.02
     ],
     [
       "htt",
-      0.89
+      1.858
+    ],
+    [
+      " ht",
+      1.858
+    ],
+    [
+      "ttp",
+      1.858
     ],
     [
       "http",
-      0.89
+      1.858
+    ],
+    [
+      " http",
+      1.858
+    ],
+    [
+      " htt",
+      1.858
+    ],
+    [
+      " in",
+      1.793
     ],
     [
       " to",
-      0.856
-    ],
-    [
-      " ins",
-      0.806
-    ],
-    [
-      " si",
-      0.797
-    ],
-    [
-      " i ",
-      0.749
-    ],
-    [
-      "ve ",
-      0.726
-    ],
-    [
-      "ock",
-      0.724
-    ],
-    [
-      "to ",
-      0.719
-    ],
-    [
-      "nst",
-      0.715
-    ],
-    [
-      "inst",
-      0.715
-    ],
-    [
-      "tion",
-      0.713
-    ],
-    [
-      "tio",
-      0.713
-    ],
-    [
-      " to ",
-      0.703
+      1.79
     ],
     [
       "000 ",
-      0.697
+      1.691
+    ],
+    [
+      " ins",
+      1.661
+    ],
+    [
+      "000",
+      1.655
+    ],
+    [
+      "ve ",
+      1.646
+    ],
+    [
+      " si",
+      1.599
     ],
     [
       " our ",
-      0.695
+      1.594
+    ],
+    [
+      " our",
+      1.594
+    ],
+    [
+      " to ",
+      1.588
+    ],
+    [
+      "tio",
+      1.579
+    ],
+    [
+      "tion",
+      1.579
+    ],
+    [
+      " i ",
+      1.578
+    ],
+    [
+      "to ",
+      1.572
     ]
   ],
   "top_genuine_features": [
     [
       " xx",
-      -0.932
-    ],
-    [
-      "-26",
-      -0.919
+      -1.788
     ],
     [
       "for ",
-      -0.849
-    ],
-    [
-      " for",
-      -0.849
-    ],
-    [
-      " for ",
-      -0.849
+      -1.665
     ],
     [
       " fo",
-      -0.849
+      -1.665
     ],
     [
-      "oct",
-      -0.829
+      " for ",
+      -1.665
     ],
     [
-      " xxx",
-      -0.808
-    ],
-    [
-      " xxxx",
-      -0.808
+      " for",
+      -1.665
     ],
     [
       "for",
-      -0.803
+      -1.591
     ],
     [
-      "ct-",
-      -0.8
+      " xxx",
+      -1.582
     ],
     [
-      "-oc",
-      -0.8
+      " xxxx",
+      -1.582
     ],
     [
-      "oct-2",
-      -0.8
+      "-26",
+      -1.563
     ],
     [
-      "oct-",
-      -0.8
+      "oct",
+      -1.462
     ],
     [
-      "-oct",
-      -0.8
+      "eve",
+      -1.443
+    ],
+    [
+      "xxx ",
+      -1.419
+    ],
+    [
+      "xxxx ",
+      -1.419
+    ],
+    [
+      "xx ",
+      -1.419
+    ],
+    [
+      " on",
+      -1.391
     ]
   ]
 }
