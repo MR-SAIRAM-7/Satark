@@ -58,4 +58,9 @@ export const localApi: SatarkApi = {
   async sendWhatsApp() {
     return 'demo';
   },
+
+  // No cyber cell queue without the backend: the kit stays on the phone.
+  async fileComplaint() {
+    return null;
+  },
 };

@@ -216,6 +216,7 @@ export const en = {
   'kit.title': 'Complaint Kit',
   'kit.building': 'Preparing your complaint…',
   'kit.ready': 'Ready in {s} seconds',
+  'kit.filed': 'Filed with the cyber cell as {ref}',
   'kit.summary': 'Summary',
   'kit.narrative': 'Complaint text',
   'kit.suspect': 'Suspect details',

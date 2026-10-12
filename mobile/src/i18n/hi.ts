@@ -218,6 +218,7 @@ export const hi: Partial<Record<StringKey, string>> = {
   'kit.title': 'शिकायत किट',
   'kit.building': 'आपकी शिकायत तैयार हो रही है…',
   'kit.ready': '{s} सेकंड में तैयार',
+  'kit.filed': 'साइबर सेल में {ref} के रूप में दर्ज',
   'kit.summary': 'सारांश',
   'kit.narrative': 'शिकायत का विवरण',
   'kit.suspect': 'संदिग्ध का विवरण',

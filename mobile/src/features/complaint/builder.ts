@@ -1,6 +1,7 @@
-import { buildNarrative, buildSummary, formatInr, type ParsedTxn } from '@satark/shared';
+import { buildNarrative, buildSummary, formatInr, mask, type ParsedTxn } from '@satark/shared';
 
 import { translate } from '@/i18n';
+import { api } from '@/services/api';
 import { sha256 } from '@/services/hash';
 import { notify } from '@/services/notifications';
 import { useAlerts } from '@/store/activity';
@@ -48,6 +49,33 @@ async function txnEvidence(txn: ParsedTxn, at: number): Promise<EvidenceItem> {
     txn.reference ? `, reference ${txn.reference}` : ''
   }${txn.payee ?? txn.payeeVpa ? `, to ${txn.payee ?? txn.payeeVpa}` : ''}`;
   return { id: newId('ev'), kind: 'transaction', label: 'Bank debit alert', content, at, sha256: await sha256(content) };
+}
+
+/**
+ * With a backend, the kit is also filed into the partner cyber cell's queue,
+ * which sends the automated WhatsApp updates as the case moves. Masked text only.
+ */
+function fileWithCyberCell(complaint: Complaint, channel: string): void {
+  const { elder, guardian, lang } = useSettings.getState();
+  api
+    .fileComplaint({
+      client_id: complaint.id,
+      scam_type: complaint.scamType,
+      lang,
+      locality: elder.locality,
+      channel,
+      elder: { name: elder.name, phone: elder.phone || undefined },
+      guardian: guardian ? { name: guardian.name, phone: guardian.phone || undefined, relation: guardian.relation } : null,
+      narrative: complaint.narrative,
+      summary: complaint.summary,
+      suspect: complaint.suspect,
+      transaction: complaint.transaction,
+      evidence: complaint.evidence
+        .filter((e) => e.kind !== 'transaction')
+        .map((e) => ({ kind: e.kind, label: e.label, content: mask(e.content), at: e.at })),
+    })
+    .then((filed) => filed && useComplaints.getState().patch(complaint.id, { caseRef: filed.ref }))
+    .catch(() => undefined);
 }
 
 export interface BuildResult {
@@ -127,6 +155,7 @@ export async function buildComplaint(checkId: string): Promise<BuildResult> {
   const complaint: Complaint = { ...draft, pdfUri: pdf.uri, pdfSha256: pdf.sha256 };
 
   useComplaints.getState().add(complaint);
+  fileWithCyberCell(complaint, CHANNEL[origin.source] ?? 'a message');
   useAlerts.getState().push({
     kind: 'complaint_ready',
     title: translate(settings.lang, 'alert.complaint_ready'),

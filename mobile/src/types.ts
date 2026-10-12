@@ -138,6 +138,8 @@ export interface Complaint {
   whatsapp: WhatsAppMessage[];
   /** WhatsApp status updates on/off for this complaint. */
   updatesEnabled: boolean;
+  /** Case reference in the cyber cell's queue, once the backend has filed it. */
+  caseRef?: string | null;
 }
 
 export interface DrillResult {

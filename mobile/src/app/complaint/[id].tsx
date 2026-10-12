@@ -120,6 +120,14 @@ export default function ComplaintScreen() {
           </AppText>
         </View>
       ) : null}
+      {complaint.caseRef ? (
+        <View style={styles.ready}>
+          <Ionicons name="shield-checkmark" size={18} color={colors.safeDeep} />
+          <AppText variant="label" color={colors.safeDeep}>
+            {t('kit.filed', { ref: complaint.caseRef })}
+          </AppText>
+        </View>
+      ) : null}
 
       <Card tone={{ main: colors.danger, soft: colors.dangerSoft }} style={styles.section}>
         <AppText variant="caption" color={colors.dangerDeep} style={styles.kicker}>

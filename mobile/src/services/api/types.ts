@@ -1,4 +1,4 @@
-import type { AnalyzeRequest, AnalyzeResponse, IndicatorType, LangCode, ScamType } from '@satark/shared';
+import type { AnalyzeRequest, AnalyzeResponse, IndicatorType, LangCode, ParsedTxn, ScamType } from '@satark/shared';
 
 import type { CommunityIoc } from '@/types';
 
@@ -19,6 +19,22 @@ export interface WhatsAppPayload {
 }
 
 export type DeliveryStatus = 'sent' | 'demo' | 'failed';
+
+/** A Complaint Kit, as filed into the cyber cell's case queue (POST /complaint). Text is masked. */
+export interface CaseFiling {
+  client_id: string;
+  scam_type: ScamType;
+  lang: LangCode;
+  locality: string;
+  channel: string;
+  elder: { name: string; phone?: string };
+  guardian?: { name: string; phone?: string; relation?: string } | null;
+  narrative: string;
+  summary: string;
+  suspect: { phones: string[]; upiIds: string[]; links: string[] };
+  transaction: (ParsedTxn & { at: number }) | null;
+  evidence: { kind: 'message' | 'transaction' | 'call' | 'transcript'; label: string; content: string; at: number }[];
+}
 
 export interface ListenResult {
   transcript: string;
@@ -60,4 +76,10 @@ export interface SatarkApi {
 
   /** WhatsApp delivery through Twilio (complaint kit, FIR status updates). */
   sendWhatsApp(payload: WhatsAppPayload): Promise<DeliveryStatus>;
+
+  /**
+   * File the kit into the cyber cell's case queue, which then drives the
+   * automated stage updates. Null when there is no backend or it is unreachable.
+   */
+  fileComplaint(filing: CaseFiling): Promise<{ ref: string } | null>;
 }

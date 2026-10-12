@@ -1,25 +1,75 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { analyzeResponseSchema, fuseScores, verdictFor, type AnalyzeResponse } from '@satark/shared';
 
 import { env } from '@/config/env';
+import { useSettings } from '@/store/settings';
+import { newId } from '@/store/storage';
 import type { CommunityIoc } from '@/types';
 
-import type { SatarkApi } from './types';
+import type { DeliveryStatus, SatarkApi } from './types';
 
 const TIMEOUT_MS = 8000;
+const DEVICE_KEY = 'satark.deviceId';
 
-async function request<T>(path: string, init: RequestInit = {}, timeoutMs = TIMEOUT_MS): Promise<T> {
+/**
+ * Anonymous device session: the phone signs in with a random install id (no
+ * password, no phone number required), so the backend can alert this elder's
+ * guardian and file their complaints. Fetched once, refreshed on a 401.
+ */
+let session: Promise<string | null> | null = null;
+
+async function deviceId(): Promise<string> {
+  const saved = await AsyncStorage.getItem(DEVICE_KEY).catch(() => null);
+  if (saved) return saved;
+  const id = newId('dev');
+  await AsyncStorage.setItem(DEVICE_KEY, id).catch(() => undefined);
+  return id;
+}
+
+function token(): Promise<string | null> {
+  session ??= (async () => {
+    const { role, elder, guardian, lang } = useSettings.getState();
+    const me = role === 'guardian' && guardian ? guardian : elder;
+    const res = await fetch(`${env.apiBaseUrl}/auth/device`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        device_id: await deviceId(),
+        role,
+        name: me.name || undefined,
+        phone: me.phone || undefined,
+        locality: elder.locality || undefined,
+        lang,
+      }),
+    });
+    if (!res.ok) throw new Error(`/auth/device responded ${res.status}`);
+    return ((await res.json()) as { token?: string }).token ?? null;
+  })().catch(() => {
+    session = null; // try again next time
+    return null;
+  });
+  return session;
+}
+
+async function request<T>(path: string, init: RequestInit = {}, timeoutMs = TIMEOUT_MS, retry = true): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const auth = await token();
     const res = await fetch(`${env.apiBaseUrl}${path}`, {
       ...init,
       headers: {
         Accept: 'application/json',
         ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+        ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
         ...init.headers,
       },
       signal: controller.signal,
     });
+    if (res.status === 401 && retry) {
+      session = null;
+      return request<T>(path, init, timeoutMs, false);
+    }
     if (!res.ok) throw new Error(`${path} responded ${res.status}`);
     return (await res.json()) as T;
   } finally {
@@ -48,7 +98,7 @@ function neverLower(base: AnalyzeResponse, server: AnalyzeResponse): AnalyzeResp
   };
 }
 
-/** Client for the Node.js + Express backend described in the README (`/v1`). */
+/** Client for the Node.js + Express backend (`backend/`, routes under `/v1`). */
 export const httpApi: SatarkApi = {
   mode: 'backend',
 
@@ -114,13 +164,23 @@ export const httpApi: SatarkApi = {
 
   async sendWhatsApp(payload) {
     try {
-      await request('/complaint/send', {
+      const data = await request<{ status?: DeliveryStatus | 'skipped' }>('/complaint/send', {
         method: 'POST',
         body: JSON.stringify({ to: payload.to, body: payload.body, media_url: payload.mediaUrl }),
       });
-      return 'sent';
+      // The server records instead of sending when Twilio is not configured (demo mode).
+      return data.status === 'sent' ? 'sent' : data.status === 'failed' ? 'failed' : 'demo';
     } catch {
       return 'failed';
+    }
+  },
+
+  async fileComplaint(filing) {
+    try {
+      const data = await request<{ ref?: string }>('/complaint', { method: 'POST', body: JSON.stringify(filing) }, 30000);
+      return data.ref ? { ref: data.ref } : null;
+    } catch {
+      return null;
     }
   },
 };

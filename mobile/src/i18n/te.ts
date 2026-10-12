@@ -218,6 +218,7 @@ export const te: Partial<Record<StringKey, string>> = {
   'kit.title': 'ఫిర్యాదు కిట్',
   'kit.building': 'మీ ఫిర్యాదు సిద్ధమవుతోంది…',
   'kit.ready': '{s} సెకన్లలో సిద్ధం',
+  'kit.filed': 'సైబర్ సెల్‌లో {ref} గా నమోదైంది',
   'kit.summary': 'సారాంశం',
   'kit.narrative': 'ఫిర్యాదు వివరాలు',
   'kit.suspect': 'అనుమానితుడి వివరాలు',
