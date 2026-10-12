@@ -53,3 +53,6 @@ yarn-error.*
 .DS_Store
 Thumbs.db
 .idea/
+
+# Gradle caches (created by IDE Java/Kotlin tooling)
+.gradle/
