@@ -1,0 +1,73 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!--
+    Least privilege. Satark does not request SMS access (notification access
+    already covers SMS), the Accessibility Service, the call log, or
+    QUERY_ALL_PACKAGES. These entries merge into the app manifest at build time.
+  -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+  <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+  <!-- Rule R10: detect remote-access apps without the all-packages permission. -->
+  <queries>
+    <package android:name="com.anydesk.anydeskandroid" />
+    <package android:name="com.teamviewer.quicksupport.market" />
+  </queries>
+
+  <application>
+
+    <!-- F1: reads SMS and WhatsApp notification text. Android keeps it bound while access is granted. -->
+    <service
+      android:name=".SatarkNotificationListener"
+      android:exported="true"
+      android:label="Satark message protection"
+      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+      <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService" />
+      </intent-filter>
+    </service>
+
+    <!-- F9: sees the caller's number before the phone rings. -->
+    <service
+      android:name=".SatarkScreeningService"
+      android:exported="true"
+      android:permission="android.permission.BIND_SCREENING_SERVICE">
+      <intent-filter>
+        <action android:name="android.telecom.CallScreeningService" />
+      </intent-filter>
+    </service>
+
+    <!-- Keeps the process alive around the clock behind a permanent notification. -->
+    <service
+      android:name=".ProtectionService"
+      android:exported="false"
+      android:foregroundServiceType="specialUse">
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="Continuous on-device scam protection for incoming messages and calls" />
+    </service>
+
+    <!-- Runs the shared TypeScript detection pipeline when a message arrives and the app is closed. -->
+    <service
+      android:name=".NotificationTaskService"
+      android:exported="false" />
+
+    <!-- Restart protection after a reboot or an app update. -->
+    <receiver
+      android:name=".BootReceiver"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
+
+  </application>
+</manifest>

@@ -54,7 +54,13 @@ interface SatarkNativeModule {
   hideCallOverlay(): void;
   addListener(event: 'onNotification', listener: (e: NativeNotification) => void): Subscription;
   addListener(event: 'onCall', listener: (e: NativeCallEvent) => void): Subscription;
-  addListener(event: 'onOverlayResult', listener: (e: { cut: boolean }) => void): Subscription;
+  addListener(event: 'onOverlayResult', listener: (e: OverlayResult) => void): Subscription;
+}
+
+/** Outcome of the native countdown overlay. `ended` is whether Android actually ended the call. */
+export interface OverlayResult {
+  cut: boolean;
+  ended: boolean;
 }
 
 const native =
@@ -100,7 +106,7 @@ export const SatarkNative = {
   onNotification: (listener: (e: NativeNotification) => void) =>
     safe((m) => m.addListener('onNotification', listener), NO_SUBSCRIPTION),
   onCall: (listener: (e: NativeCallEvent) => void) => safe((m) => m.addListener('onCall', listener), NO_SUBSCRIPTION),
-  onOverlayResult: (listener: (e: { cut: boolean }) => void) =>
+  onOverlayResult: (listener: (e: OverlayResult) => void) =>
     safe((m) => m.addListener('onOverlayResult', listener), NO_SUBSCRIPTION),
 };
 

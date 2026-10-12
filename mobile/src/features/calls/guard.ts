@@ -68,13 +68,19 @@ export function startCallCut(number: string, checkId?: string): void {
  * Returns false if Android refused to end the call, so the UI can fall back
  * to "press the red button".
  */
-export async function finishCallCut(number: string, cut: boolean, checkId?: string): Promise<boolean> {
+export async function finishCallCut(
+  number: string,
+  cut: boolean,
+  checkId?: string,
+  /** Set when the native overlay already tried to end the call, so it is not attempted twice. */
+  endedByOverlay?: boolean,
+): Promise<boolean> {
   SatarkNative.hideCallOverlay();
   stopSpeaking();
   if (!cut) return true;
 
   const { lang } = useSettings.getState();
-  const ended = await SatarkNative.endCall();
+  const ended = endedByOverlay ?? (await SatarkNative.endCall());
   useAlerts.getState().push({
     kind: 'call_cut',
     title: translate(lang, 'alert.call_cut'),

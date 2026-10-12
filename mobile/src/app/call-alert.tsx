@@ -41,10 +41,10 @@ export default function CallAlertScreen() {
   const settled = useRef(false);
   const progress = useSharedValue(0);
 
-  const settle = async (cut: boolean) => {
+  const settle = async (cut: boolean, endedByOverlay?: boolean) => {
     if (settled.current) return;
     settled.current = true;
-    const ended = await finishCallCut(number, cut, params.checkId || undefined);
+    const ended = await finishCallCut(number, cut, params.checkId || undefined, endedByOverlay);
     // If Android refused to end the call, tell the elder to hang up themselves.
     setPhase(!cut ? 'kept' : ended || !isNativeAvailable ? 'ended' : 'manual');
   };
@@ -54,7 +54,7 @@ export default function CallAlertScreen() {
     progress.value = withTiming(1, { duration: CUT_COUNTDOWN_SECONDS * 1000, easing: Easing.linear });
     const timer = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
     // The native overlay shows the same countdown over the dialer; honour its button too.
-    const overlay = SatarkNative.onOverlayResult(({ cut }) => settle(cut));
+    const overlay = SatarkNative.onOverlayResult(({ cut, ended }) => settle(cut, cut ? ended : undefined));
     return () => {
       clearInterval(timer);
       overlay.remove();
