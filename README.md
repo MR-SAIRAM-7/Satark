@@ -6,9 +6,9 @@
 
 Satark (సతర్క్ / सतर्क, "alert") is an Android app that stops cyber fraud against senior citizens **while the scam is happening**. It reads incoming SMS and WhatsApp messages, checks links and UPI requests, and watches live calls. When it spots a scam, it warns the elder **by voice in Telugu, Hindi or English**, alerts their family on the spot, can end a scam call after a 10-second countdown, and builds a complete police complaint kit, delivered on **WhatsApp**, within the golden hour.
 
-**Built with:** React Native (Expo, TypeScript) + Kotlin · Node.js + Express · MongoDB Atlas · Gemini + OpenRouter · Sarvam AI · Twilio WhatsApp · Next.js
+**Built with:** React Native (Expo, TypeScript) + Kotlin · Node.js + Express + Socket.IO · MongoDB (Mongoose) · scikit-learn · Gemini + OpenRouter + Sarvam AI · Twilio WhatsApp · Next.js + Leaflet
 
-> **Status (12 Oct):** the Android app and the shared detection engine are built: see [`mobile/README.md`](mobile/README.md) to run and build them. The backend and dashboard come next; sections below that mention OpenAI or React Native CLI describe the original plan and are being updated as those parts land.
+> **Status (12 Oct, evening):** every part is built and tested: the Android app ([`mobile/`](mobile/README.md)), the shared engine (`shared/`), the API with layers 3-5 and the automations ([`backend/`](backend/README.md)), the police dashboard ([`dashboard/`](dashboard/README.md)) and the layer-3 classifier ([`ml/`](ml/README.md)). The whole stack runs with no API keys and no database setup: see [Getting started](#getting-started). What is live, partial or still planned is listed under [Implementation status](#implementation-status). The pitch run sheet is [`docs/DEMO.md`](docs/DEMO.md).
 
 **KPRIT Software Hackathon 2026** · 12 Oct 11:00 AM to 13 Oct 11:00 AM
 **Track:** Open Innovation (#200), combining **#127** Fraud message detector, **#164** Spam call detector, **#161** Phishing URL detector and **#144** Transaction anomaly alerts
@@ -29,6 +29,8 @@ Satark (సతర్క్ / सतर्क, "alert") is an Android app that st
 - [Complete tech stack](#complete-tech-stack)
 - [Live call protection](#live-call-protection)
 - [Police dashboard and threat intelligence](#police-dashboard-and-threat-intelligence)
+- [Automation: alerts, escalation and filing](#automation-alerts-escalation-and-filing)
+- [Implementation status](#implementation-status)
 - [API reference](#api-reference)
 - [Data model](#data-model)
 - [Android permissions](#android-permissions-least-privilege)
@@ -153,12 +155,11 @@ flowchart LR
     subgraph IN["What comes in"]
         A1["SMS and WhatsApp<br/>notifications"]
         A2["Links and UPI QR"]
-        A3["Screenshots"]
-        A4["Calls and audio"]
+        A4["Calls<br/>(Home Guardian phone)"]
         A5["Messages forwarded<br/>to Satark on WhatsApp"]
     end
 
-    subgraph PHONE["On the phone: React Native + Kotlin (works offline)"]
+    subgraph PHONE["On the phone: Expo + Kotlin (works offline)"]
         L1["1. Clean-up<br/>undoes disguised and hidden text"]
         L2["2. India rules<br/>SMS sender suffix, 1600 calls, UPI"]
         L1 --> L2
@@ -166,17 +167,17 @@ flowchart LR
 
     subgraph SERVER["On the server: Node.js + Express"]
         L3["3. ML classifier<br/>TF-IDF + logistic regression"]
-        L4["4. AI Kill Chain<br/>LangChain.js: OpenAI → Sarvam-105B"]
+        L4["4. AI Kill Chain<br/>Gemini → OpenRouter → Sarvam-105B"]
         L5["5. Community intel<br/>MongoDB: hashed numbers, UPI IDs, links"]
         L3 --> L4 --> L5
     end
 
     subgraph OUT["What Satark does"]
-        O1["Voice warning<br/>Sarvam Bulbul v3"]
-        O2["Family alert<br/>Firebase Cloud Messaging"]
+        O1["Voice warning<br/>Sarvam Bulbul, phone TTS offline"]
+        O2["Family alert<br/>Socket.IO + Expo push + WhatsApp<br/>escalates if ignored"]
         O3["Call cut<br/>10-second countdown"]
-        O4["Complaint Kit<br/>Twilio WhatsApp API"]
-        O5["Police campaign map<br/>Next.js + Leaflet + Socket.IO"]
+        O4["Complaint Kit + case filed<br/>WhatsApp update at every stage"]
+        O5["Police dashboard<br/>Next.js + Leaflet + Socket.IO"]
     end
 
     IN --> L1
@@ -198,9 +199,9 @@ Five layers score every input. The final score is the **highest** of them, so th
 |---|---|---|---|
 | **1. Clean-up** | Phone and server | Undoes disguises: NFKC normalisation, strips zero-width characters, maps look-alike letters (Cyrillic "Ѕ" → "S"), joins spaced letters ("S B I"), reverses leetspeak (0→o, 1→i, @→a) | TypeScript function in `shared/`, imported by both the app and the server |
 | **2. India rules** | Phone and server | Deterministic red flags (below) | `shared/rules.json` plus a small TypeScript rule engine in `shared/` |
-| **3. ML classifier** | Server | Scam probability from text | TF-IDF character n-grams + logistic regression, trained with scikit-learn in `ml/`, exported to JSON and scored in Node (no Python at runtime) |
-| **4. AI Kill Chain** | Server | Scam type, stage, tactics, quoted evidence, explanations in three languages | LangChain.js chain: OpenAI GPT with zod-validated JSON output, falling back to Sarvam-105B; the message is passed as quoted data |
-| **5. Community intel** | Server, cached on phone | Matches keyed hashes of numbers, UPI IDs and domains against confirmed reports | MongoDB `iocs` collection, synced to a native cache on the phone |
+| **3. ML classifier** | Server | Scam probability from text, with the n-grams that drove it | TF-IDF character n-grams + logistic regression, trained with scikit-learn in `ml/`, exported to JSON and scored in Node (no Python at runtime; a parity test matches scikit-learn's probabilities). Scaled by sender trust like the Kill Chain; **on its own it can only make a message "suspicious"**, red alerts need another layer to agree |
+| **4. AI Kill Chain** | Server | Scam type, stage, tactics, quoted evidence, explanations in three languages | Gemini, then OpenRouter, then Sarvam-105B, with zod-validated JSON output; the same prompt (`shared/src/prompt.ts`) on phone and server; the message is passed as quoted data. Runs only when something is already suspicious |
+| **5. Community intel** | Server, cached on phone | Matches SHA-256 hashes of numbers, UPI IDs and domains against community reports | MongoDB `iocs` collection; three independent reporters confirm an indicator; phones pull new hashes with `/iocs/sync` into the native call-screening cache |
 
 **Verdict rule**
 
@@ -263,25 +264,26 @@ Since 6 May 2025 every commercial SMS sender ID ends in `-P`, `-S`, `-T` or `-G`
 
 ## LLMs and AI models used
 
-Satark does **not** rely on an LLM alone. The rules and our own trained classifier carry the verdict; the LLM explains the verdict and can only raise the risk score.
+Satark does **not** rely on an LLM alone. The rules and our own trained classifier carry the verdict; the LLM explains the verdict and can only raise the risk score. Every model is optional: with no keys the verdict comes from layers 1-3 and 5 with cached explanations.
 
 | Purpose | Model | Provider | Why we chose it |
 |---|---|---|---|
-| **Scam reasoning: Kill Chain stage, tactics, quoted evidence, advice** (layer 4) | **OpenAI GPT** model with structured JSON output (set with `OPENAI_MODEL`), orchestrated with **LangChain.js** | OpenAI | Reliable structured output, validated against a zod schema; strong reasoning on code-mixed text |
-| **Indian-language reasoning and explanations** (Telugu, Hindi); **fallback for layer 4** | **Sarvam-105B** (`sarvam-105b`) | Sarvam AI | Built for Indian languages; natural Telugu and Hindi explanations for the elder |
-| **Speech to text** (Home Guardian live-call transcription) | **Sarvam Saaras v4**, with **OpenAI Whisper** fallback | Sarvam AI / OpenAI | Telugu, Hindi and Indian-English speech, including code-mixed speech |
-| **Text to speech** (voice warnings) | **Sarvam Bulbul v3** | Sarvam AI | Natural Telugu and Hindi voices; Android TextToSpeech as offline fallback |
-| **OCR** (screenshots of scam messages) | **Sarvam Vision**, with **tesseract.js** fallback | Sarvam AI / open source | Reads Telugu and English screenshots |
-| **Scam classifier** (layer 3) | **TF-IDF character n-grams + logistic regression**, trained by us | scikit-learn (training), Node.js (scoring) | Trains in minutes, explainable features, measurable precision and recall |
-| **Campaign grouping** | **OpenAI text embeddings** + **DBSCAN** clustering (`density-clustering`) | OpenAI / open source | Groups similar scam messages into named campaigns for the police dashboard |
+| **Scam reasoning: Kill Chain stage, tactics, quoted evidence, advice** (layer 4) | **Gemini** (`GEMINI_MODEL`, default `gemini-flash-latest`) with JSON output | Google | Fast, cheap, strong on code-mixed text |
+| **Layer 4 fallback** | Any model via **OpenRouter** (`OPENROUTER_MODEL`) | OpenRouter | A second provider when the first is slow or rate-limited |
+| **Indian-language reasoning; last LLM fallback** | **Sarvam-105B** (`sarvam-105b`) | Sarvam AI | Built for Indian languages |
+| **Speech to text** (Home Guardian live-call transcription) | **Sarvam Saaras** | Sarvam AI | Telugu, Hindi and Indian-English speech, including code-mixed speech |
+| **Text to speech** (voice warnings) | **Sarvam Bulbul** | Sarvam AI | Natural Telugu and Hindi voices; the phone's own TTS is the offline fallback |
+| **Translation** (any of 11 languages) | **Sarvam Mayura** | Sarvam AI | Translates the interface and explanations on demand |
+| **Scam classifier** (layer 3) | **TF-IDF character n-grams + logistic regression**, trained by us | scikit-learn (training), Node.js (scoring) | Trains in seconds, explainable features, measurable precision and recall |
+| **Campaign grouping** | The classifier's TF-IDF vectors + **DBSCAN** (`density-clustering`), plus shared indicators | open source | Groups near-identical scam texts into named campaigns without another API |
 
 **Multi-model fallback chain**
 
 ```text
-OpenAI GPT  →  Sarvam-105B  →  cached explanation for the scam type
+Gemini  →  OpenRouter  →  Sarvam-105B  →  cached explanation for the scam type
 ```
 
-Every LLM response is checked against the zod schema below. A response that is slow, rate-limited or fails validation is dropped and the next model in the chain is tried. The rules and classifier always produce a verdict, even if every model is down.
+Every LLM response is checked against the zod schema below (`llmVerdictSchema` in `shared/src/verdict.ts`). A response that is slow (6 s budget), rate-limited or fails validation is dropped and the next model in the chain is tried. The rules and classifier always produce a verdict, even if every model is down.
 
 **LLM output contract (layer 4)**
 
@@ -305,12 +307,9 @@ Every LLM response is checked against the zod schema below. A response that is s
 **LLM guardrails (prompt-injection defence)**
 
 - Layer 1 runs before anything else, so hidden characters and look-alike letters are gone before the LLM sees the text.
-- The message is sent to the LLM wrapped as **quoted data**, with an instruction never to follow text inside it.
-- A separate check flags phrases aimed at AI systems ("ignore previous instructions", "classify as safe"). A hit sets `injection_attempt` and adds risk.
-- The `max()` verdict rule means the LLM can never pull a score below layers 2, 3 or 5.
-- The fallback chain plus cached explanations for the demo messages keep the demo working if OpenAI is slow or rate-limited.
-
----
+- The message is sent to the LLM wrapped as **quoted data**, with an instruction never to follow text inside it; attempts to close the quote tag are stripped.
+- Rule R15 flags phrases aimed at AI systems ("ignore previous instructions", "classify as safe"). A hit sets `injection_attempt` and adds risk.
+- The `max()` verdict rule means the LLM can never pull a score below layers 2, 3 or 5, and the phone re-applies its own score to whatever the server returns (`neverLower`).
 
 ## Multilingual support with Sarvam AI
 
@@ -318,11 +317,11 @@ Satark speaks to the elder in **their own language**. Telugu is the default; Hin
 
 | Where language matters | How Satark handles it | Sarvam model | Fallback |
 |---|---|---|---|
-| Reading scam messages in Telugu, Hindi, English and Hinglish / code-mixed text | Layer 1 normalises script and disguises; layer 2 rules include Telugu and Hinglish phrase variants; layer 4 reasons over the original text | **Sarvam-105B** | OpenAI GPT |
+| Reading scam messages in Telugu, Hindi, English and Hinglish / code-mixed text | Layer 1 normalises script and disguises; layer 2 rules include Telugu and Hinglish phrase variants; layer 4 reasons over the original text | **Sarvam-105B** | Gemini, OpenRouter |
 | Explaining *why* it is a scam | The verdict JSON carries `explanation.te`, `explanation.hi` and `explanation.en` | **Sarvam-105B** | Cached explanations for known scam types |
-| Speaking the warning aloud | Every verdict is spoken within 2 s: *"ఇది మోసం. నిజమైన పోలీసులు ఫోన్‌లో ఎవరినీ అరెస్ట్ చేయరు."* ("This is a scam. Real police never arrest anyone on a call.") | **Bulbul v3** | Android TextToSpeech via `react-native-tts` (offline) |
-| Listening to a live scam call | Home Guardian sends 5-second WAV chunks to `/listen`, which transcribes Telugu, Hindi and English speech | **Saaras v4** | OpenAI Whisper, then a manual "End call" prompt |
-| Reading screenshots | Screenshots shared to Satark are OCR'd before analysis | **Sarvam Vision** | tesseract.js |
+| Speaking the warning aloud | Every verdict is spoken within 2 s: *"ఇది మోసం. నిజమైన పోలీసులు ఫోన్‌లో ఎవరినీ అరెస్ట్ చేయరు."* ("This is a scam. Real police never arrest anyone on a call.") | **Bulbul** | The phone's own text-to-speech (`expo-speech`, offline) |
+| Listening to a live scam call | Home Guardian sends 5-second WAV chunks to `/listen`, which transcribes Telugu, Hindi and English speech | **Saaras** | Text lines to `/listen/text` (the demo script, or on-device speech recognition), then a manual "End call" prompt |
+| Reading screenshots | Planned: screenshots shared to Satark OCR'd before analysis | **Sarvam Vision** (planned) | Paste the text |
 | Onboarding | Every permission is explained in a short Telugu voice note | **Bulbul v3** | Android TTS |
 | Complaint Kit | Complaint text in English (portal format) plus a **Telugu summary** for the elder and a 1930 script card read aloud in Telugu | **Sarvam-105B** + **Bulbul v3** | English-only PDF |
 
@@ -330,20 +329,20 @@ Satark speaks to the elder in **their own language**. Telugu is the default; Hin
 sequenceDiagram
     participant HG as Home Guardian phone
     participant API as Express /v1/listen
-    participant STT as Sarvam Saaras v4
-    participant LLM as LangChain.js (OpenAI → Sarvam-105B)
-    participant FCM as Firebase Cloud Messaging
+    participant STT as Sarvam Saaras
+    participant KC as Kill Chain (layers 1-2, rolling 60 s)
+    participant RT as Socket.IO + push
     participant E as Elder's phone
-    participant TTS as Sarvam Bulbul v3
+    participant TTS as Sarvam Bulbul
 
     HG->>API: 5-second WAV chunk + session ID
     API->>STT: Audio (te / hi / en)
     STT-->>API: Transcript
     API->>API: Keyword check ("CBI", "arrest warrant", "don't disconnect")
-    API->>LLM: Kill Chain on the last 60 seconds
-    LLM-->>API: Stage 4, score 91
-    API->>FCM: "CUT" signal
-    FCM->>E: Red overlay + 10-second countdown
+    API->>KC: Last 60 seconds of transcript
+    KC-->>API: Stage 4, score 91
+    API->>RT: "CUT" signal, guardian alert, dashboard alarm
+    RT->>E: Red overlay + 10-second countdown
     E->>TTS: Warning text in Telugu
     TTS-->>E: Voice warning plays
 ```
@@ -391,53 +390,49 @@ events.addListener("onNotification", async ({ app, sender, text }) => {
 
 ### Outbound: delivering the Complaint Kit on WhatsApp
 
-When the user taps **Report**, the backend builds the Complaint Kit PDF, uploads it to **AWS S3**, creates a presigned URL that expires in about 10 minutes, and sends the PDF to **both the elder and the guardian** with the **Twilio WhatsApp API**.
+When the user taps **Report**, the app builds the kit on the phone and files it with the backend (`POST /v1/complaint`). The backend renders the same Complaint Kit (`kitHtml` in `shared/src/complaint.ts`) to PDF with headless Chrome or Edge, stores it on **AWS S3** (or local disk behind HMAC-signed links when S3 is not configured) with a link that expires in about 10 minutes, files the case into the cyber cell's queue, and sends it to **both the elder and the guardian** with the **Twilio WhatsApp API**. Every later stage (1930 called, acknowledgement, bank hold, FIR, IO assigned) sends the next update automatically.
 
 ```mermaid
 sequenceDiagram
     participant U as Elder / Guardian
     participant App as Satark app
     participant API as Express /v1/complaint
-    participant AI as LangChain.js (OpenAI → Sarvam-105B)
-    participant S as AWS S3
+    participant S as S3 or signed local link
     participant WA as Twilio WhatsApp API
+    participant P as Police dashboard
 
     U->>App: Tap "Report"
-    App->>API: POST /v1/complaint (check IDs)
-    API->>AI: Draft complaint from evidence
-    API->>API: Render PDF (Puppeteer + Noto Sans Telugu), SHA-256 every evidence item
-    API->>S: Upload PDF, create presigned URL (~10 min)
-    App->>API: POST /v1/complaint/send
-    API->>WA: Send PDF to elder and guardian
-    WA-->>U: "Satark: complaint kit ready. Call 1930 now."
+    App->>App: Build kit on the phone, SHA-256 every evidence item
+    App->>API: POST /v1/complaint (masked evidence)
+    API->>API: Render PDF (headless Chrome), hash it, file the case
+    API->>S: Store PDF, create link (~10 min)
+    API->>WA: Kit to elder and guardian
+    API->>P: New case (alarm if inside the golden hour)
+    WA-->>U: "Satark: complaint kit SAT-... is ready. Call 1930 now."
 ```
 
 ```ts
-// backend/src/services/whatsapp.ts
-import twilio from "twilio";
-
-const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-
-export async function sendKitWhatsApp(to: string, pdfUrl: string) {
-  return client.messages.create({
-    from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
-    to: `whatsapp:${to}`,
-    body: "Satark: complaint kit ready. Call 1930 now.",
-    mediaUrl: [pdfUrl],
-  });
-}
+// backend/src/services/notify.ts (abridged)
+const sent = await twilioClient.messages.create({
+  from: `whatsapp:${env.TWILIO_WHATSAPP_FROM}`,
+  to: `whatsapp:${number}`,
+  body,
+  ...(mediaUrl ? { mediaUrl: [mediaUrl] } : {}),
+});
 ```
+
+Without Twilio credentials every message is recorded in the outbox with status `demo` and nothing leaves the server; the dashboard's **Automated messages** page shows exactly what would have been sent.
 
 **What is in the Complaint Kit (one PDF)**
 
-1. Complaint text in English following the cybercrime.gov.in sections (incident, suspect, transaction, evidence), plus a **Telugu summary** for the elder.
-2. Suspect details: phone numbers, UPI IDs, links, bank account hints.
+1. Complaint text in English following the cybercrime.gov.in sections (incident, suspect, transaction, evidence), plus a summary in the elder's language.
+2. Suspect details: phone numbers, UPI IDs, links.
 3. Transaction details from the debit SMS: amount, bank, time, UTR or reference number.
-4. Evidence annex: messages, screenshots, call log entry and flagged transcript lines, each with its **SHA-256 hash**.
+4. Evidence annex: messages, call log entries and flagged transcript lines, each with its **SHA-256 hash**.
 5. **Zero FIR request letter** (BNSS Section 173) to hand in at any police station.
-6. A **1930 script card**, read aloud in Telugu: what to say, in order.
+6. A **1930 script card** in the elder's language: what to say, in order.
 
-Satark never auto-submits complaints. There is no public API for cybercrime.gov.in, filing needs the victim's own OTP and a captcha, and bot submission would break hackathon rule 9. Instead, **guided filing** opens the 1930 script card or shows a copy button for every portal field, and the user then enters the acknowledgement number so Satark can track it.
+Satark never auto-submits complaints to cybercrime.gov.in. There is no public API, filing needs the victim's own OTP and a captcha, and bot submission would break hackathon rule 9. What it automates instead is described in [Automation](#automation-alerts-escalation-and-filing).
 
 ### WhatsApp setup with Twilio (about 30 minutes)
 
@@ -457,33 +452,29 @@ Satark never auto-submits complaints. There is no public API for cybercrime.gov.
 
 | Layer | Technology | Why |
 |---|---|---|
-| **Android app** | **React Native** (TypeScript, React Native CLI) + **Kotlin** native modules | One language across app and server; native Kotlin where Android requires it |
-| **Native Android APIs** | `NotificationListenerService`, `CallScreeningService` + `RoleManager.ROLE_CALL_SCREENING`, `TelecomManager.endCall()`, `TelephonyCallback` / `PhoneStateListener`, `WindowManager` overlay (`TYPE_APPLICATION_OVERLAY`), `ACTION_SEND` share intent, Android `TextToSpeech` | Message capture, pre-ring blocking, live-call cut, countdown overlay, offline voice |
-| **React Native packages** | `@react-native-firebase/messaging`, `react-native-tts`, `react-native-sound`, `react-native-audio-record`, `react-native-receive-sharing-intent`, `@react-navigation/native`, `react-native-config`, `@react-native-async-storage/async-storage`, `axios` | Push alerts, offline voice, Bulbul playback, Home Guardian audio, share-to-Satark, navigation, config, settings, API calls |
-| **Shared code** | `@satark/shared` TypeScript package (npm workspace) | Clean-up, India rules, masking and the verdict schema, identical on phone and server |
-| **Backend** | **Node.js** + **Express** (TypeScript) | REST API and Twilio webhooks in the same language as the app |
-| **Database** | **MongoDB Atlas** with **Mongoose** | Flexible documents for checks, evidence and indicators; free tier |
-| **Auth** | Phone sign-in with a one-time code (**Twilio Verify**), then **JWT** (`jsonwebtoken`) with role-based middleware | Elders never type a password; elder, guardian and police roles |
-| **File storage** | **AWS S3** with presigned URLs | Complaint PDFs and evidence; links expire in about 10 minutes |
-| **Realtime** | **Socket.IO** | New reports appear live on the police dashboard |
-| **AI reasoning (LLM)** | **OpenAI GPT** via **LangChain.js**, zod-validated JSON; **Sarvam-105B** fallback | Kill Chain stage, evidence, explanations in three languages |
-| **ML classifier** | **scikit-learn** for training (`ml/`), scored in Node from exported JSON | Trains in minutes; explainable features; no Python in production |
-| **Speech** | **Sarvam Saaras v4** (speech to text), **Sarvam Bulbul v3** (text to speech); **OpenAI Whisper** and Android TTS fallbacks | Telugu, Hindi and English voice |
-| **OCR** | **Sarvam Vision** or **tesseract.js** | Telugu and English screenshots |
-| **Push alerts** | **Firebase Cloud Messaging** (`firebase-admin` on the server) | Guardian alerts and the "CUT" signal |
-| **Messaging** | **Twilio WhatsApp API** | Complaint Kit delivery and the forward-to-Satark bot |
-| **Link checks** | RDAP lookups, `fastest-levenshtein`, **Google Safe Browsing API** | Domain age, look-alike detection, known bad links |
-| **Campaign grouping** | **OpenAI embeddings** + DBSCAN (`density-clustering`) | Groups similar scam messages |
-| **Threat sharing** | STIX 2.1 JSON, validated with **Ajv** against the OASIS STIX schemas | Standard format for cyber cells and CERT teams |
-| **PDF** | **Puppeteer** (HTML to PDF) + **Noto Sans Telugu** | Chromium's text shaping renders Telugu letter combinations correctly |
-| **Police dashboard** | **Next.js** / React + **Tailwind CSS** + **Leaflet** map | Live campaign map |
+| **Android app** | **React Native** with **Expo SDK 57** (TypeScript, Expo Router, zustand) + a **Kotlin** native module, built with **EAS** | One language across app and server; native Kotlin where Android requires it |
+| **Native Android APIs** | `NotificationListenerService`, `CallScreeningService` + `RoleManager.ROLE_CALL_SCREENING`, `TelecomManager.endCall()`, `WindowManager` overlay, foreground service | Message capture, pre-ring blocking, live-call cut, countdown overlay |
+| **Shared code** | `@satark/shared` TypeScript package (npm workspace) | Clean-up, India rules, Kill Chain, masking, verdict schema, LLM prompt, Complaint Kit content, indicator-hash format: identical on phone and server |
+| **Backend** | **Node.js** + **Express 5** (TypeScript, run with `tsx`) | REST API and Twilio webhooks in the same language as the app |
+| **Database** | **MongoDB** with **Mongoose 9**; **mongodb-memory-server** as a zero-setup embedded database (persisted to `backend/.data`) and for tests | Atlas in production; nothing to install for the demo |
+| **Auth** | Phone one-time code (**Twilio Verify**, fixed code in demo mode) or an anonymous device session, then **JWT** with role-based middleware | Elders never type a password; elder, guardian, Home Guardian and police roles |
+| **Realtime** | **Socket.IO** | Dashboard feed and alarms, guardian alerts, the live-call "CUT" signal |
+| **Automation** | **node-cron** jobs: alert escalation, golden-hour reminders, campaign clustering, case follow-ups, indicator decay | Things that must happen even when nobody is looking |
+| **AI reasoning (LLM)** | **Gemini → OpenRouter → Sarvam-105B**, zod-validated JSON | Kill Chain stage, evidence, explanations in three languages |
+| **ML classifier** | **scikit-learn** for training (`ml/`), scored in Node from exported JSON | Trains in seconds; explainable n-grams; parity-tested |
+| **Speech and translation** | **Sarvam Saaras** (STT), **Bulbul** (TTS), **Mayura** (translation); phone TTS offline | Telugu, Hindi and nine more languages |
+| **Push alerts** | **Expo push service** (`expo-server-sdk`, delivers through FCM on Android) | Matches the Expo app; no Firebase admin setup |
+| **Messaging** | **Twilio WhatsApp API** | Complaint Kit delivery, stage updates, the forward-to-Satark bot |
+| **File storage** | **AWS S3** presigned URLs, or local disk behind HMAC-signed expiring links | Complaint PDFs |
+| **PDF** | **puppeteer-core** driving the installed Chrome or Edge | Correct Telugu and Devanagari shaping |
+| **Link checks** | RDAP domain age, **Google Safe Browsing API**, look-alike detection in `shared/` | Rules R4, R5, R6 |
+| **Campaign grouping** | TF-IDF vectors + DBSCAN (`density-clustering`) + shared indicators | Names the campaigns on the dashboard |
+| **Threat sharing** | STIX 2.1 bundle, structure checked in tests | Standard format for cyber cells and CERT teams |
+| **Police dashboard** | **Next.js 16** + **Tailwind CSS 4** + **react-leaflet** (OpenStreetMap) + **Recharts** + SWR + Socket.IO client | Live map, alarms, case queue, explainable AI |
 | **Domain hunting** | **crt.sh** (Certificate Transparency) | Finds look-alike bank domains (passive lookups only) |
-| **Security tooling** | `helmet`, `express-rate-limit`, `zod` request validation, `multer` upload limits, `sharp` (re-encode images, strip EXIF), **gitleaks** (pre-commit), `npm audit`, `eslint-plugin-security`, **OWASP ZAP** baseline (own deployment only) | Secure by default |
-| **Testing and CI** | **Jest** + **Supertest** (API), **React Native Testing Library** (app), **Postman** collection, **GitHub Actions** | Every push is linted and tested |
-| **Hosting** | **Render** (backend, Docker), **Vercel** (dashboard), **MongoDB Atlas**, **ngrok** for local webhooks | Free tiers, quick deploys |
-| **Demo tooling** | **scrcpy** (mirror the elder phone to the projector), `adb` | Live demo on stage |
-
----
+| **Security tooling** | `helmet`, `express-rate-limit`, `zod` on every request, `multer` memory-only upload limits, AES-256-GCM for users' numbers, HMAC phone lookup hashes, pino log redaction | Secure by default |
+| **Testing and CI** | **Vitest** + **Supertest** + mongodb-memory-server (API), Vitest (shared engine), scikit-learn parity test, **GitHub Actions** | Every push is type-checked, tested and built |
+| **Hosting** | Dockerfiles for the API (with Chromium) and the dashboard, `docker-compose.yml` with MongoDB | One command for a local stack |
 
 ## Live call protection
 
@@ -530,79 +521,134 @@ Every confirmed report becomes intelligence. It protects all users within a minu
 
 **Community intelligence ("herd immunity for scams")**
 
-1. A confirmed report extracts indicators: phone numbers, UPI IDs and domains.
-2. Each one is stored in MongoDB as an HMAC-SHA256 hash (keyed with `HASH_SECRET`) with a report count; three or more independent reports mark it **confirmed**.
-3. Phones pull new hashes through `/iocs/sync` and an FCM push, so call screening and message checks work offline.
+1. A confirmed report sends the indicators' hashes (phone numbers, UPI IDs and domains): the phone hashes `satark:<type>:<value>` with SHA-256 (`indicatorKey` in `shared/`), so the server and every phone agree.
+2. MongoDB keeps each hash with a report count and the distinct reporters; three or more independent reports mark it **confirmed**. Raw values are never stored for indicators the phones report.
+3. Phones pull new hashes through `/iocs/sync`, so call screening and message checks work offline.
 
-**Dashboard panels** (Next.js web app, login required, police role only)
+**Dashboard pages** ([`dashboard/`](dashboard/README.md), police role only)
 
-| Panel | Shows |
+| Page | Shows |
 |---|---|
-| Live map | Reports by locality (never exact location), coloured by scam type, updated over Socket.IO |
-| Active campaigns | Label, report count, first and last seen, sample masked message |
-| Top indicators | Most-reported numbers, UPI IDs and domains (shown masked) |
-| Trends | Reports per hour by scam type |
-| Domain hunter | Suspected look-alike bank domains from Certificate Transparency |
-| Export | STIX 2.1 bundle for sharing with cyber cells and CERT teams |
+| Command centre | KPI tiles (golden-hour cases, money at risk and on hold, scams caught, unanswered alerts), live scam map by locality (never exact location), live feed with a siren and flashing banner for critical events, reports over time by scam type, active campaigns, most-reported identifiers, the daily "scam weather" in three languages |
+| Case queue | Every complaint filed through Satark, golden-hour cases first; evidence with hashes, the Complaint Kit PDF, the FIR tracker, and the automated messages sent; moving a case to the next stage messages the family |
+| Explainable AI | Paste any message: every layer's score, the Kill Chain quotes, each rule that fired and why, the classifier's n-grams, the explanation in three languages |
+| Threat intel | Look up a raw number, UPI ID or domain against the hashed intel, add a confirmed indicator, export a STIX 2.1 bundle, Certificate Transparency domain hunter, campaigns |
+| Automated messages | Every WhatsApp message, push and bank letter Satark sent (or recorded in demo mode) |
 
----
+## Automation: alerts, escalation and filing
+
+What happens without anyone pressing a button, all in `backend/src/services` and `backend/src/jobs`:
+
+| Trigger | What Satark does automatically |
+|---|---|
+| A message scores 70+ for an elder | Alert to every linked guardian: in-app (Socket.IO), push, and WhatsApp when it is critical (stage 4+). One alert per conversation per 30 minutes |
+| A critical alert is not acknowledged within `ESCALATE_AFTER_MIN` (5) minutes | Guardian reminded again, and the cyber-cell dashboard sounds its alarm; up to two escalations |
+| A debit SMS within 60 minutes of a 70+ check (`/txn/check`) | **Golden-hour case** opened by itself: conversation as evidence, UTR and beneficiary parsed, kit PDF built, WhatsApp to the family, critical alarm on the dashboard, 1930 script returned to the phone |
+| Golden-hour case still at "kit ready" | WhatsApp reminders at 10, 30 and 50 minutes ("N minutes left, call 1930 with UTR ..."), each sent once |
+| The elder taps **Report** | Case filed into the cyber cell queue with the Complaint Kit; WhatsApp to elder and guardian |
+| An officer moves a case on (dashboard) | WhatsApp update to elder and guardian for that stage; at **bank hold** a freeze request to the bank's nodal officer is drafted (recorded in the outbox) |
+| The user saves the 1930 / portal acknowledgement number | Case moves to "acknowledged"; the family is told |
+| A case has not moved for 48 hours | A follow-up message asking for the acknowledgement number |
+| Three independent reports of one number, UPI ID or link | Indicator confirmed, pushed to every phone at the next sync, announced on the dashboard |
+| Every 10 minutes | Reports re-clustered into campaigns |
+| Live call: Home Guardian hears stage 4+ at 85+ | "CUT" signal to the elder's phone (10-second countdown), guardian alert, dashboard alarm |
+
+Satark deliberately does **not** submit to cybercrime.gov.in or call 1930 by itself: filing needs the victim's own OTP and a captcha, there is no public API, and filing in someone's name without them is what a scam tool would do. It automates everything up to that point and then tracks the case.
+
+## Implementation status
+
+| ID | Feature | Status |
+|---|---|---|
+| F1 | Message scanner (notifications, share, paste, forward to WhatsApp bot) | Built: notification listener (needs the EAS build), paste, WhatsApp bot. Screenshot OCR is planned |
+| F2 | Five-layer engine | Built: layers 1-2 and Kill Chain on phone and server, layer 3 classifier, layer 4 LLM chain (needs a key), layer 5 community intel |
+| F3 | Verdict screen with Kill Chain meter | Built (app) |
+| F4 | Voice warnings in Telugu, Hindi, English | Built: Sarvam Bulbul with a key, phone TTS otherwise |
+| F5 | Link and UPI checker | Built: look-alike, risky TLD, APK, UPI collect; RDAP age and Safe Browsing on the server |
+| F6 | Family guardian alerts | Built: Socket.IO, Expo push, WhatsApp, escalation |
+| F7 | Elder-first interface | Built (app) |
+| F8 | Demo mode | Built: app mock dialer and portal, backend outbox, dashboard storylines |
+| F9 | Call guard before ring | Built (Kotlin, needs the EAS build); community hashes from `/iocs/sync` |
+| F10 | Live call protection with countdown | Built: Home Guardian state machine, `/listen` with Sarvam STT, CUT signal |
+| F11 | Transaction-after-scam alert | Built: on the phone, and `/txn/check` opens a golden-hour case |
+| F12 | Complaint Kit and WhatsApp delivery | Built: PDF on phone and server, Twilio delivery, case filing, stage updates |
+| F13 | Community threat intelligence | Built |
+| F14 | Police dashboard with STIX export | Built |
+| F15 | Prompt-injection and disguise defence | Built; measured in `ml/reports/metrics.md` |
+| F16 | Family safe-word | Built (app) |
+| F17 | Call back the real one | Built (app directory; only partly verified numbers) |
+| F18 | Offline protection | Built (layers 1-2 and the cached blocklist on the phone) |
+| F19 | Phishing domain hunter | Built (crt.sh, labelled examples when crt.sh does not answer) |
+| F20 | Scam drills | Built (app), results stored with `/drill/result` |
+| F21 | Guardian Chrome extension | Not built |
+| F22 | AI Ammamma scam-baiter | Not built |
+| F23 | Weekly "scam weather" voice note | Text built (dashboard, three languages); voice note via Bulbul not wired |
 
 ## API reference
 
-Node.js + Express, all routes under `/v1`. Request bodies are validated with zod; every route except the Twilio webhook needs a JWT.
+Node.js + Express, all routes under `/v1` ([`backend/README.md`](backend/README.md) has request examples). Request bodies are validated with zod. "Device" means any signed-in app user; police routes need the police role.
 
-| Method | Path | Purpose |
-|---|---|---|
-| `POST` | `/auth/otp/start` | Send a sign-in code to a phone number (Twilio Verify) |
-| `POST` | `/auth/otp/verify` | Check the code; returns a JWT with the user's role |
-| `POST` | `/analyze` | Text, image, link or UPI string in; verdict JSON out (layers 3–5) |
-| `POST` | `/listen` | 5-second audio chunk plus session ID; returns transcript, stage and cut flag |
-| `POST` | `/report` | Confirm a scam; updates intel, alerts guardian |
-| `GET` | `/iocs/sync?since=` | Hashed reported numbers, UPI IDs and domains for the phone cache |
-| `POST` | `/guardian/link` | Pair elder and guardian with a code |
-| `POST` | `/txn/check` | Parsed debit SMS in; links it to a recent high-risk check |
-| `POST` | `/complaint` | Builds the kit; returns PDF URL and evidence hashes |
-| `POST` | `/complaint/send` | Sends the kit on WhatsApp |
-| `POST` | `/whatsapp/inbound` | Twilio webhook for messages forwarded to Satark (signature-checked) |
-| `GET` | `/dashboard/campaigns` | Campaigns, counts and map points |
-| `GET` | `/stix/export` | STIX 2.1 bundle of confirmed indicators |
-| `GET` | `/domains/hunt` | Certificate Transparency results |
-| `POST` | `/drill/result` | Scam drill outcome |
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `POST` | `/auth/otp/start`, `/auth/otp/verify` | anyone | Phone sign-in (Twilio Verify; `DEMO_OTP` in demo mode); returns a JWT |
+| `POST` | `/auth/device` | app | Anonymous device session for an install |
+| `GET` `PATCH` | `/auth/me` | signed in | Profile, language, push token |
+| `POST` | `/analyze` | anyone | Layers 3-5: masked text in, verdict JSON out (plus `ml`, `community_hits`, `check_id`) |
+| `POST` | `/tts`, `/translate` | anyone | Sarvam Bulbul and Mayura |
+| `POST` | `/listen`, `/listen/text` | Home Guardian | Audio chunk or text line; returns transcript, stage, score and the cut flag |
+| `POST` | `/report` | anyone | Confirm a scam: hashed indicators + locality |
+| `GET` | `/iocs/sync?since=` | anyone | Hashed indicators changed since a time, in the phone's cache format |
+| `POST` | `/txn/check` | elder | Debit SMS after a scam: opens the golden-hour case |
+| `POST` | `/guardian/code`, `/guardian/link` | elder, guardian | Pair with a 6-digit code |
+| `GET` | `/guardian/elders`, `/alerts` | guardian | The family's alerts and drill readiness |
+| `POST` | `/alerts/:id/ack` | signed in | Acknowledge an alert (stops escalation) |
+| `POST` | `/complaint` | app | File a case with the Complaint Kit; returns the case reference and PDF link |
+| `POST` | `/complaint/send` | app | WhatsApp delivery for the app's tracker |
+| `GET` `POST` | `/complaints`, `/complaints/:id`, `/complaints/:id/kit`, `/complaints/:id/ack` | owner, police | Read a case, get a fresh kit link, save the acknowledgement number |
+| `POST` | `/whatsapp/inbound` | Twilio | Forward-to-Satark bot (signature-checked) |
+| `GET` `PATCH` | `/cases`, `/cases/:id` | police | The case queue; moving a stage messages the family |
+| `GET` | `/dashboard/summary`, `map`, `trends`, `campaigns`, `indicators`, `feed`, `outbox`, `alerts`, `weather` | police | Dashboard panels |
+| `GET` `POST` | `/iocs/lookup`, `/iocs` | police | Look up or add an indicator |
+| `GET` | `/stix/export` | police | STIX 2.1 bundle |
+| `GET` | `/domains/hunt?brand=` | police | Certificate Transparency results |
+| `POST` | `/drill/result` · `GET /drill/readiness` | signed in | Scam drills |
+| `GET` `POST` | `/demo/status`, `/demo/reset`, `/demo/feed`, `/demo/scenario` | police | Demo control room |
+| `GET` | `/files/*key?exp=&sig=` | signed link | Local stand-in for S3 presigned URLs |
+| `GET` | `/health` | anyone | Database, integrations switched on, classifier metrics |
 
-**Example request to `/v1/analyze`**
+**Example request to `/v1/analyze`** (exactly what the app sends: text masked on the phone, `client_id` so a later report can point back)
 
 ```json
 {
   "source": "whatsapp",
-  "sender": "+9198XXXXXXXX",
-  "sender_header": null,
+  "sender": "+9198XXXXXX45",
   "text": "This is Mumbai Police. Your Aadhaar is linked to money laundering...",
   "lang": "te",
+  "thread_id": "whatsapp:+919848012345",
+  "client_id": "ck_mv5daoru019eqk",
   "context": {"on_call": false, "local_rule_score": 50, "local_rules": ["R11"]}
 }
 ```
 
-The response is the [LLM output contract](#llms-and-ai-models-used) with the fused score.
-
----
+The response is the [LLM output contract](#llms-and-ai-models-used) with the fused score, `layer_scores`, `rules`, `voice` and `advice_l10n`.
 
 ## Data model
 
-One MongoDB Atlas database, with Mongoose models. Scammers' phone numbers, UPI IDs and domains are stored **only as hashes keyed with a server-wide secret**, so matching works but raw values are never kept. Users' own phone numbers are encrypted (AES-256-GCM), because Satark needs them to deliver the Complaint Kit on WhatsApp.
+One MongoDB database, Mongoose models in [`backend/src/db/models.ts`](backend/src/db/models.ts). Scammers' phone numbers, UPI IDs and domains reported by phones are stored **only as hashes** plus a masked display form. Users' own phone numbers are encrypted (AES-256-GCM) with an HMAC-SHA256 hash (keyed with `HASH_SECRET`) for sign-in lookups. Message text is stored masked.
 
 | Collection | Key fields | Notes |
 |---|---|---|
-| `users` | _id, role (elder, guardian, police), phone_hash, phone_enc, language, created_at | `phone_hash` for lookups, `phone_enc` for WhatsApp delivery; language: `te`, `hi` or `en` |
-| `guardian_links` | elder_id, guardian_id, created_at | Paired with a 6-digit code |
-| `devices` | user_id, fcm_token, platform | For push alerts |
-| `checks` | _id, user_id, source (sms, whatsapp, share, forward, call, transcript), masked_text, sender_hash, verdict, score, stage, scam_type, layer_scores, created_at | One document per analysed item |
-| `iocs` | _id, type (phone, upi, domain), value_hash, report_count, status (suspected, confirmed), campaign_id, first_seen, last_seen | Community intel; unique index on (type, value_hash) |
-| `reports` | _id, user_id, check_id, ioc_ids, locality, created_at | Locality only, never exact location |
-| `campaigns` | _id, label, scam_type, report_count, first_seen, last_seen | Built by clustering |
-| `complaints` | _id, user_id, check_ids, pdf_key, pdf_sha256, ack_number, status, created_at | Kit and tracking; `pdf_key` is the S3 object key |
-| `drills` | _id, user_id, scenario, passed, created_at | Scam drill results |
-
----
+| `users` | role (elder, guardian, listener, police), phoneHash, phoneEnc, phoneMasked, deviceId, lang, locality, pushTokens | Police accounts created only by an administrator |
+| `guardianlinks` | elder, guardian, relation | Paired with a one-time 6-digit code |
+| `checks` | clientId, source, channel, maskedText, verdict, score, stage, scamType, layerScores, rules, locality | One document per analysed item |
+| `iocs` | type, hash, masked, reportCount, reporters, status, scamType, campaign, firstSeen, lastSeen | Unique on (type, hash); confirmed at 3 reporters |
+| `reports` | scamType, locality, geo (locality centre), iocs, channel, maskedText, campaign | Locality only, never an exact location |
+| `campaigns` | label, scamType, reportCount, localities, iocCount, sampleText | Built by clustering every 10 minutes |
+| `complaints` | ref, source, priority, goldenHourEndsAt, elder, guardian, narrative, suspect, transaction, evidence (SHA-256), pdf, stage, timeline, reminders | The cyber cell's case queue |
+| `alerts` | elder, kind, severity, ackedAt, escalations | Guardian alerts and their escalation |
+| `messages` | channel, audience, toMasked, body, status (sent, demo, failed, skipped), purpose, complaint | Outbox of every automated message |
+| `feedevents` | type, severity, title, locality, geo | The dashboard's live feed |
+| `drills` | user, scenario, passed | Scam drill results |
+| `audits` | action, actor, target | Server-side event log (STRIDE: repudiation) |
 
 ## Android permissions (least privilege)
 
@@ -623,38 +669,37 @@ One MongoDB Atlas database, with Mongoose models. Scammers' phone numbers, UPI I
 
 ## Getting started
 
-> The repository is being built live during the hackathon. The layout below is the target structure.
-
 ```text
 Satark/
-├── mobile/       # React Native app (elder, guardian and Home Guardian modes) + Kotlin native modules
-├── backend/      # Node.js + Express API: layers 3–5, /listen, complaint kit, Twilio WhatsApp, STIX
-├── dashboard/    # Next.js police dashboard with Leaflet map
-├── shared/       # @satark/shared: clean-up, India rules (rules.json), masking, verdict schema
-├── ml/           # Python: classifier training, test sets, evaluation; exports model JSON for the backend
-└── docs/         # Architecture, PRD, Postman collection, screenshots, measured metrics
+├── mobile/       # Expo app (elder, guardian and Home Guardian modes) + Kotlin native module
+├── backend/      # Node.js + Express API: layers 3-5, alerts, cases, WhatsApp, STIX, cron automation
+├── dashboard/    # Next.js police dashboard
+├── shared/       # @satark/shared: clean-up, India rules, Kill Chain, masking, verdict schema, prompt, kit content
+├── ml/           # Corpus generator + scikit-learn training; exports backend/models/classifier.json
+└── docs/         # Demo run sheet
 ```
 
-The root `package.json` defines npm workspaces for `mobile`, `backend`, `dashboard` and `shared`.
+The root `package.json` defines npm workspaces for `shared`, `backend`, `dashboard` and `mobile`.
 
 ### Prerequisites
 
-- Node.js 22 LTS and npm
-- Android Studio with the Android SDK and JDK 17 (React Native CLI setup), plus **two Android 10+ phones** (elder and guardian) and optionally a third for Home Guardian
-- Python 3.11+ (only for training the classifier in `ml/`)
-- Docker (optional, for running the backend with a local MongoDB)
-- Accounts: MongoDB Atlas, Firebase, Twilio (WhatsApp Sandbox and Verify), Sarvam AI, OpenAI, AWS (S3), Google Safe Browsing API
+- Node.js 22+ and npm
+- Chrome or Edge installed (Complaint Kit PDFs; without one the kit is served as HTML)
+- Python 3.11+ with scikit-learn, only to retrain the classifier
+- Optional accounts: MongoDB Atlas, Twilio (WhatsApp Sandbox and Verify), Gemini / OpenRouter / Sarvam, Google Safe Browsing, AWS S3
 
-### Backend
+### Run everything (no keys, no database setup)
 
 ```bash
-npm install                 # from the repo root: installs all workspaces
-cd backend
-cp .env.example .env        # fill in the variables below
-npm run dev                 # http://localhost:8000
+npm install
+npm run dev
 ```
 
-Or run the backend and a local MongoDB together:
+`npm run dev` starts the API on http://localhost:8000 and the dashboard on http://localhost:3000. On first start the API runs an embedded MongoDB (kept in `backend/.data`), seeds a fortnight of demo data for Hyderabad and schedules the automations. Sign in to the dashboard as **Inspector K. Rao, +91 90000 00001, code 123456**.
+
+To point the app at the API, create `mobile/.env` with `EXPO_PUBLIC_API_BASE_URL=http://<your-computer's-LAN-IP>:8000/v1` (or `http://localhost:8000/v1` for the web preview) and run `npm run mobile:web`. Onboard as Lakshmi Devi, +91 90000 00101, to join the seeded storyline (her son Ravi is her guardian).
+
+Or with Docker (API, dashboard and MongoDB):
 
 ```bash
 docker compose up --build
@@ -669,78 +714,55 @@ ngrok http 8000
 ### Android app
 
 ```bash
-npm install                                        # from the repo root
 cd mobile
-cp .env.example .env                               # optional: EXPO_PUBLIC_API_BASE_URL=https://<your-backend>/v1
-npm run web                                        # preview the screens in a browser
 eas build --profile preview --platform android     # build the APK in the cloud
 ```
 
-The app is built with Expo and EAS, so Android Studio is not required. Full instructions are in [`mobile/README.md`](mobile/README.md).
+The app is built with Expo and EAS, so Android Studio is not required. Full instructions are in [`mobile/README.md`](mobile/README.md). Install over USB (`adb install`); never send the APK over WhatsApp, because Play Protect in India blocks sideloaded apps that request sensitive permissions.
 
-Install over USB (`adb install`). Never send the APK over WhatsApp, because Play Protect in India blocks sideloaded apps that request sensitive permissions.
-
-**Before a demo:** turn battery optimisation off and autostart on for Satark (Xiaomi, Realme, Vivo and Oppo kill background listeners); grant notification access, the call-screening role and overlay; turn Do Not Disturb off; use mobile data rather than venue Wi-Fi; mirror the elder phone with `scrcpy`.
-
-### Police dashboard
-
-```bash
-cd dashboard
-cp .env.example .env.local
-npm run dev
-```
+**Before a demo:** turn battery optimisation off and autostart on for Satark (Xiaomi, Realme, Vivo and Oppo kill background listeners); grant notification access, the call-screening role and overlay; turn Do Not Disturb off; use mobile data rather than venue Wi-Fi; mirror the elder phone with `scrcpy`. The run sheet is [`docs/DEMO.md`](docs/DEMO.md).
 
 ### Classifier training
 
 ```bash
-cd ml
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-python train.py             # writes backend/models/classifier.json and the metrics report
+pip install -r ml/requirements.txt
+npm run ml:corpus           # ml/data/*.jsonl from the templates
+npm run ml:train            # writes backend/models/classifier.json and ml/reports/metrics.md
 ```
 
-A Jest test checks that the Node scorer gives the same probabilities as scikit-learn on the test set.
+A test checks that the Node scorer gives the same probabilities as scikit-learn.
 
 ### Tests
 
 ```bash
-npm test --workspaces
+npm test
 ```
 
-Jest and Supertest cover the API, React Native Testing Library covers the app screens, and GitHub Actions runs lint and tests on every push.
-
----
+Vitest covers the shared engine (30 tests) and the API (34 tests on an in-memory MongoDB: analysis, auth and roles, community intel, cases and the golden hour, escalation, STIX, the WhatsApp bot, the live-call CUT signal over Socket.IO, classifier parity). `npm run typecheck` checks every workspace. GitHub Actions runs both and builds the dashboard on every push.
 
 ## Environment variables
 
-Names only. Secrets live in `.env` files, which are git-ignored, and `gitleaks` runs as a pre-commit hook.
+Names only; every value is optional for the demo. Secrets live in `.env` files, which are git-ignored. The full commented list is [`backend/.env.example`](backend/.env.example).
 
 **Backend (`backend/.env`)**
 
 | Variable | Used for |
 |---|---|
-| `PORT` | API port (default 8000) |
-| `MONGODB_URI` | MongoDB Atlas connection string |
-| `JWT_SECRET` | Signing app and dashboard sessions |
-| `HASH_SECRET` | Server-wide key for hashing numbers, UPI IDs and domains |
-| `PHONE_ENC_KEY` | AES-256-GCM key for users' own phone numbers |
-| `OPENAI_API_KEY`, `OPENAI_MODEL` | Layer 4 LLM, Whisper fallback, embeddings |
-| `SARVAM_API_KEY` | Sarvam-105B, Saaras v4, Bulbul v3, Sarvam Vision |
+| `PORT`, `PUBLIC_BASE_URL`, `ALLOWED_ORIGINS` | API port, public URL (Twilio signatures, file links), CORS |
+| `MONGODB_URI` | MongoDB Atlas; empty = embedded MongoDB |
+| `JWT_SECRET`, `HASH_SECRET`, `PHONE_ENC_KEY` | Sessions, phone lookup hashes, AES-256-GCM for users' numbers (required in production) |
+| `DEMO_MODE`, `DEMO_OTP`, `SEED_ON_START`, `LIVE_FEED`, `JOBS_ENABLED`, `ESCALATE_AFTER_MIN`, `ENRICH_LINKS` | Demo behaviour and automation |
+| `GEMINI_API_KEY`, `GEMINI_MODEL`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | Layer 4 LLM chain |
+| `SARVAM_API_KEY` and the `SARVAM_*_MODEL` names | Sarvam-105B, Bulbul, Saaras, Mayura |
 | `GOOGLE_SAFE_BROWSING_API_KEY` | Link checks (rule R6) |
-| `FIREBASE_SERVICE_ACCOUNT` | Path to the Firebase service-account JSON for FCM |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Twilio API access |
-| `TWILIO_WHATSAPP_FROM` | WhatsApp sender (the sandbox number during the hackathon) |
-| `TWILIO_VERIFY_SERVICE_SID` | Phone sign-in codes |
-| `PUBLIC_BASE_URL` | Public backend URL, used to check Twilio webhook signatures |
-| `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET` | Complaint PDFs and evidence |
-| `ALLOWED_ORIGINS` | CORS, limited to the dashboard |
-| `DEMO_MODE` | `true` routes 1930 and portal actions to mock screens |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_VERIFY_SERVICE_SID` | WhatsApp and sign-in codes |
+| `EXPO_ACCESS_TOKEN` | Expo push (optional) |
+| `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET` | Complaint PDFs on S3 |
+| `CHROME_PATH` | Chrome or Edge for PDFs, if not found automatically |
 
-**App (`mobile/.env`, read with `react-native-config`):** `API_BASE_URL`
+**App (`mobile/.env`):** `EXPO_PUBLIC_API_BASE_URL`, see [`mobile/.env.example`](mobile/.env.example)
 
-**Dashboard (`dashboard/.env.local`):** `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SOCKET_URL`
-
----
+**Dashboard (`dashboard/.env.local`):** `NEXT_PUBLIC_API_BASE_URL`
 
 ## Demo mode
 
@@ -766,12 +788,14 @@ A security product must be secure itself.
 
 **Engineering checklist**
 
-- Secrets only in `.env`; `.gitignore` from the first commit; `gitleaks` pre-commit hook
-- `helmet` security headers; rate limiting on every endpoint; upload type and size checks; images re-encoded with `sharp` and EXIF removed
-- zod validation on every request body, which also blocks MongoDB operator injection (`$gt`, `$ne` and the like)
-- Phone, Aadhaar, PAN and account numbers masked by regex **on the phone, before upload**
-- HTTPS only; CORS limited to our dashboard
-- `npm audit` and `eslint-plugin-security` in CI; OWASP ZAP baseline scan against our own deployment only
+- Secrets only in `.env` (git-ignored); in production the API refuses to start with the default `JWT_SECRET`, `HASH_SECRET` or `PHONE_ENC_KEY`
+- `helmet` security headers; `express-rate-limit` on every route, tighter on `/analyze` and sign-in; `multer` keeps audio in memory only (2 MB, audio types only)
+- zod validation on every request body and query, which also blocks MongoDB operator injection (`$gt`, `$ne` and the like)
+- Phone, Aadhaar, PAN and account numbers masked by regex **on the phone, before upload**; the server stores masked text only
+- Users' phone numbers encrypted (AES-256-GCM) with HMAC lookup hashes; pino redacts authorization headers from logs
+- Twilio webhook signatures checked whenever `TWILIO_AUTH_TOKEN` is set; Complaint Kit links signed and expiring
+- CORS limited to the dashboard and app origins; HTTPS via the hosting proxy in production
+- Planned: `gitleaks` pre-commit hook, `eslint-plugin-security` and `npm audit` in CI, an OWASP ZAP baseline scan against our own deployment only
 
 **Privacy (Digital Personal Data Protection Act, 2023)**
 
@@ -784,30 +808,23 @@ A security product must be secure itself.
 
 ## Evaluation and measured metrics
 
-We publish **measured** numbers on real messages, including how often we wrongly flag genuine bank messages. Targets are aims, not claims; this table is filled in with real results at feature freeze.
+Measured numbers only. The table says where each comes from; a dash means it has not been measured yet.
 
 | Metric | Target | Measured | How measured |
 |---|---|---|---|
-| Recall on scam messages | 90%+ | _TBD_ | Held-out test set plus real messages from family WhatsApp groups |
-| False-positive rate on genuine bank messages | < 5% | _TBD_ | Real OTPs, debit alerts, bill and delivery messages |
-| Accuracy under attack | Within a few points of clean accuracy | _TBD_ | Scam set rewritten with look-alike letters, spacing, leetspeak, code-mixing, prompt injection |
-| Message to warning time | < 5 s | _TBD_ | Timestamp from notification to voice warning |
-| Scam phrase to call warning | ~8–10 s | _TBD_ | Home Guardian chunk timing |
-| Complaint Kit ready | < 30 s after tap | _TBD_ | Timer in app |
+| Classifier recall on scam messages (≥40) | 90%+ | **100.0%** | 1062 held-out messages from 35 scripts never seen in training |
+| Classifier false-positive rate on genuine messages (≥40) | < 5% | **9.7%** | Same set; mostly awareness SMS and short chats, which the server then softens with sender trust |
+| Classifier false-positive rate at the scam line (≥70) | < 1% | **0.0%** | Same set (precision 100.0%, recall 68.2%) |
+| Recall under attack, with layer 1 | Within a few points of clean | **100.0%** (without layer 1: 99.3%) | Held-out scams rewritten with look-alike letters, zero-width characters, spacing, leetspeak, emoji and prompt injection |
+| Node scorer vs scikit-learn | Identical | Matches to 5 decimal places | `backend/test/ml.test.ts` on 140 messages |
+| Server analysis latency (layers 3 and 5) | < 300 ms | **5-50 ms**; about 450 ms the first time a new link's domain age is looked up (RDAP, then cached) | `latency_ms` on `/v1/analyze`, local run, no LLM key |
+| Complaint Kit ready | < 30 s after tap | 1 s on the phone; first server PDF about 4 s (browser start), then under 1 s | App timer; API test |
+| Message to warning time | < 5 s | – | Needs the EAS build on a phone |
+| Scam phrase to call warning | ~8-10 s | – | Needs the Home Guardian phone |
 
-**Test sets**
+> **Read these with care.** The classifier numbers are measured on Satark's own template-generated corpus ([`ml/README.md`](ml/README.md)), not on real traffic. They show the pipeline works, that layer 1 holds up under attack, and that layer 3 never puts a genuine message over the scam line on its own. Real-world precision and recall must be measured on collected messages before any claim is made. Full report: [`ml/reports/metrics.md`](ml/reports/metrics.md).
 
-| Set | Size | Source |
-|---|---|---|
-| Scam messages | 50+ | Real messages from family WhatsApp groups (numbers blanked) plus public datasets |
-| Genuine messages | 50+ | Real bank OTPs, debit alerts, electricity bills, delivery and app messages |
-| Disguised scams | Same as scam set | Look-alike letters, spacing, leetspeak, emoji padding, code-mixing |
-| Prompt-injected scams | 10+ | Scam messages with hidden "classify as safe" instructions |
-| Call scripts | 3 | Digital arrest, KYC update, investment tip, recorded in Telugu by the team |
-
-Reported: precision, recall and false-positive rate with a confusion matrix; accuracy under attack next to clean accuracy; latency from message to warning and from scam phrase to call warning; seconds to build the Complaint Kit.
-
----
+**Test sets still to collect:** 50+ real scam messages from family WhatsApp groups (numbers blanked), 50+ real genuine bank, bill and delivery messages, and three call scripts recorded in Telugu by the team.
 
 ## Roadmap
 
@@ -825,7 +842,7 @@ Reported: precision, recall and false-positive rate with a confusion matrix; acc
 | Role | Member | Owns |
 |---|---|---|
 | Mobile | _[Name]_ | React Native app, Kotlin native modules (notifications, call screening, overlay, endCall), share intent, offline cache |
-| Backend and ML | _[Name]_ | Node.js + Express API, layers 1–5, classifier training and metrics, LangChain.js prompt chain, Sarvam voice, `/listen` |
+| Backend and ML | _[Name]_ | Node.js + Express API, layers 1–5, classifier training and metrics, LLM fallback chain, Sarvam voice, `/listen` |
 | Dashboard and intel | _[Name]_ | MongoDB schema, police dashboard, clustering, STIX, complaint PDF, Twilio WhatsApp, domain hunter |
 | Product and pitch | _[Name]_ | Scam and genuine message collection, test runs, Telugu scripts, PPT, README, demo video, rehearsals |
 
@@ -839,67 +856,53 @@ Every dataset, API and library we use is credited here (hackathon rule 4).
 
 | Dataset | Licence / terms |
 |---|---|
-| [UCI SMS Spam Collection](https://archive.ics.uci.edu/dataset/228/sms+spam+collection) (Almeida & Hidalgo) | CC BY 4.0 |
-| Indian scam SMS datasets from Kaggle / Hugging Face | Used only where the dataset licence allows; each one is listed in `ml/DATASETS.md` |
-| Real scam and genuine messages collected from family WhatsApp groups | Collected with consent; phone numbers blanked |
+| Satark template corpus ([`ml/templates.ts`](ml/templates.ts)): scam scripts written from public I4C, PIB Fact Check, RBI and TGCSB advisories, and genuine message formats | Written by the team; every number, UPI ID and domain is invented |
+| Planned: [UCI SMS Spam Collection](https://archive.ics.uci.edu/dataset/228/sms+spam+collection) (Almeida & Hidalgo) | CC BY 4.0 |
+| Planned: real scam and genuine messages collected from family WhatsApp groups | With consent; phone numbers blanked |
 
 **APIs and services**
 
 | Service | Used for |
 |---|---|
-| [Sarvam AI](https://docs.sarvam.ai/) (Sarvam-105B, Saaras v4, Bulbul v3, Sarvam Vision) | Indian-language reasoning, speech to text, text to speech, OCR |
-| [OpenAI API](https://platform.openai.com/docs) (GPT, Whisper, embeddings) | Layer 4 reasoning, speech-to-text fallback, campaign grouping |
+| [Sarvam AI](https://docs.sarvam.ai/) (Sarvam-105B, Saaras, Bulbul, Mayura) | Indian-language reasoning, speech to text, text to speech, translation |
+| [Google Gemini API](https://ai.google.dev/) and [OpenRouter](https://openrouter.ai/) | Layer 4 reasoning (first and second in the fallback chain) |
 | [Twilio](https://www.twilio.com/docs/whatsapp/sandbox) (WhatsApp, Verify) | Complaint Kit delivery, forward-to-Satark bot, phone sign-in |
-| [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging) | Push alerts |
+| [Expo push service](https://docs.expo.dev/push-notifications/overview/) (delivers through Firebase Cloud Messaging) | Push alerts |
 | [MongoDB Atlas](https://www.mongodb.com/atlas) | Database |
 | [AWS S3](https://aws.amazon.com/s3/) | PDF and evidence storage |
 | [Google Safe Browsing API](https://developers.google.com/safe-browsing) | Known-bad link checks |
 | [crt.sh](https://crt.sh/) | Certificate Transparency lookups |
-| Render, Vercel, ngrok | Hosting |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) | Dashboard map tiles |
+| [RDAP](https://rdap.org/) | Domain registration dates (rule R5) |
+| Docker, ngrok | Hosting and local webhooks |
 
 **Libraries**
 
 | Library | Licence |
 |---|---|
-| React Native | MIT |
-| Express | MIT |
-| Mongoose | MIT |
-| LangChain.js (`langchain`, `@langchain/openai`) | MIT |
-| OpenAI Node SDK (`openai`) | Apache-2.0 |
-| Twilio Node SDK (`twilio`) | MIT |
-| firebase-admin | Apache-2.0 |
-| @react-native-firebase/messaging | Apache-2.0 |
+| React, React Native, Expo and the Expo modules, Expo Router | MIT |
+| zustand | MIT |
+| Express, cors, multer | MIT |
+| Mongoose, mongodb-memory-server | MIT |
 | Socket.IO | MIT |
-| Puppeteer | Apache-2.0 |
-| tesseract.js | Apache-2.0 |
-| sharp | Apache-2.0 |
 | zod | MIT |
-| helmet | MIT |
-| express-rate-limit | MIT |
-| multer | MIT |
-| jsonwebtoken | MIT |
-| Ajv | MIT |
-| fastest-levenshtein | MIT |
-| density-clustering | MIT |
+| helmet, express-rate-limit, jsonwebtoken | MIT |
+| pino, pino-http, pino-pretty | MIT |
+| node-cron, lru-cache, tsx | MIT / ISC |
+| Twilio Node SDK (`twilio`) | MIT |
+| expo-server-sdk | MIT |
+| puppeteer-core | Apache-2.0 |
 | AWS SDK for JavaScript v3 (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`) | Apache-2.0 |
-| Next.js | MIT |
-| React | MIT |
+| density-clustering | MIT |
+| Next.js, SWR | MIT |
 | Tailwind CSS | MIT |
 | Leaflet | BSD-2-Clause |
-| React Navigation | MIT |
-| react-native-tts | MIT |
-| react-native-sound | MIT |
-| react-native-audio-record | MIT |
-| react-native-receive-sharing-intent | MIT |
-| react-native-config | MIT |
-| @react-native-async-storage/async-storage | MIT |
-| axios | MIT |
-| Jest | MIT |
-| Supertest | MIT |
-| React Native Testing Library | MIT |
-| eslint-plugin-security | Apache-2.0 |
-| scikit-learn (training only) | BSD-3-Clause |
-| Noto Sans Telugu | SIL Open Font License 1.1 |
+| react-leaflet | Hippocratic License 2.1 |
+| Recharts, sonner, clsx, date-fns | MIT |
+| lucide-react | ISC |
+| Vitest, Supertest | MIT |
+| scikit-learn, NumPy (training only) | BSD-3-Clause |
+| OpenStreetMap map tiles | ODbL (data), tile usage policy |
 
 Inspiration for F22: [O2's AI granny scambaiter "Daisy"](https://techcrunch.com/2024/11/15/ai-granny-scambaiter-wastes-telephone-fraudsters-time-with-boring-chat).
 

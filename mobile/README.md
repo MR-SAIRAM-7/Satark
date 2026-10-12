@@ -97,7 +97,11 @@ Two rules keep it maintainable: screens never call providers directly (they go t
 | `POST /translate` `{texts, lang}` → `{texts}` | Sarvam Mayura |
 | `POST /listen` (multipart `audio`, `session_id`) → `{transcript}` | Home Guardian chunks |
 | `POST /report`, `GET /iocs/sync?since=` | Community intelligence |
-| `POST /complaint/send` `{to, body, media_url}` | Twilio WhatsApp |
+| `POST /complaint/send` `{to, body, media_url}` → `{status}` | Twilio WhatsApp (`demo` when Twilio is not configured) |
+| `POST /complaint` | Files the Complaint Kit into the cyber cell's case queue; the case reference shows on the kit screen |
+| `POST /auth/device` | Anonymous device session; the JWT is sent on every other call |
+
+The backend lives in [`../backend`](../backend/README.md); `npm run dev` from the repository root starts it with demo data. For the web preview, set `EXPO_PUBLIC_API_BASE_URL=http://localhost:8000/v1`; on a phone, use the laptop's LAN IP.
 
 The app never lets the server lower a verdict: `neverLower` in `services/api/http.ts` re-applies the on-device score to whatever comes back.
 
