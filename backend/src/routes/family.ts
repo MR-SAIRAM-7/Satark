@@ -71,8 +71,18 @@ familyRouter.get('/alerts', requireAuth(), async (req, res) => {
   res.json({ alerts });
 });
 
+/** The elder themselves, their linked family, or the cyber cell may acknowledge an alert; nobody else. */
 familyRouter.post('/alerts/:id/ack', requireAuth(), async (req, res) => {
-  const alert = await acknowledge(String(req.params.id), req.user!.name || req.user!.role);
+  const me = req.user!;
+  const found = await Alert.findById(oid(String(req.params.id))).select('elder').lean();
+  const allowed =
+    found &&
+    (me.role === 'police' ||
+      (found.elder && String(found.elder) === me.id) ||
+      (found.elder && (await GuardianLink.exists({ elder: found.elder, guardian: me.id }))));
+  // 404 rather than 403: whether an alert exists is itself private.
+  if (!allowed) throw new HttpError(404, 'Alert not found');
+  const alert = await acknowledge(String(req.params.id), me.name || me.role);
   if (!alert) throw new HttpError(404, 'Alert not found');
   res.json({ alert });
 });

@@ -1,7 +1,7 @@
 import { indicatorKey } from '@satark/shared';
 import { describe, expect, it } from 'vitest';
 
-import { GuardianLink, User } from '../src/db/models';
+import { Alert, GuardianLink, User } from '../src/db/models';
 import { phoneHash, sha256 } from '../src/lib/crypto';
 import { api, bearer, device, signIn, useDatabase } from './helpers';
 
@@ -146,5 +146,23 @@ describe('guardian pairing', () => {
     // Past its five minutes, the code no longer links anyone.
     await User.updateOne({ _id: elder.user.id }, { pairingExpires: new Date(Date.now() - 1000) });
     await api().post('/v1/guardian/link').set(bearer(guardian.token)).send({ code: second.body.code }).expect(404);
+  });
+});
+
+describe('family alerts', () => {
+  it('lets only the elder, their linked family and the police acknowledge an alert', async () => {
+    const elder = await signIn('+919123400030', { name: 'Sarojini' });
+    const guardian = await signIn('+919123400031', { role: 'guardian' });
+    const stranger = await signIn('+919123400032', { role: 'guardian' });
+    await GuardianLink.create({ elder: elder.user.id, guardian: guardian.user.id });
+    const alert = await Alert.create({ elder: elder.user.id, kind: 'scam_call', severity: 'critical', title: 'Scam call' });
+
+    await api().post(`/v1/alerts/${alert.id}/ack`).set(bearer(stranger.token)).expect(404);
+    await api().post('/v1/alerts/not-an-id/ack').set(bearer(guardian.token)).expect(404);
+    expect((await Alert.findById(alert.id))?.ackedAt).toBeFalsy();
+
+    const acked = await api().post(`/v1/alerts/${alert.id}/ack`).set(bearer(guardian.token)).expect(200);
+    expect(acked.body.alert.ackedAt).toBeTruthy();
+    await api().post(`/v1/alerts/${alert.id}/ack`).set(bearer(elder.token)).expect(200);
   });
 });

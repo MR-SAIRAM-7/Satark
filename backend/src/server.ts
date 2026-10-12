@@ -1,4 +1,6 @@
 /** Entry point: database, seed (first run), HTTP + Socket.IO, scheduled automation. */
+import './boot';
+
 import { createServer } from 'node:http';
 
 import { env, features } from './config/env';
@@ -7,17 +9,10 @@ import { connectDb, disconnectDb } from './db/connect';
 import { User } from './db/models';
 import { startJobs, stopJobs } from './jobs';
 import { logger } from './lib/logger';
-import { explainStartupError } from './lib/startup';
+import { explainStartupError, fatal } from './lib/startup';
 import { seed } from './seed';
 import { closePdf } from './services/pdf';
 import { attachRealtime, closeRealtime } from './services/realtime';
-
-// A stray rejected promise in a background job must not take the API down mid-demo: log it and carry on.
-process.on('unhandledRejection', (reason) => console.error('Unhandled rejection:', reason));
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception:', err);
-  process.exit(1);
-});
 
 let embedded = false;
 try {
@@ -28,15 +23,18 @@ try {
   }
 } catch (err) {
   // Say what to fix in plain words; a deploy should never fail silently.
-  console.error(`\nSatark API could not start.\n${explainStartupError(err)}\n`);
-  process.exit(1);
+  fatal(explainStartupError(err));
 }
 
 const server = createServer(createApp());
 attachRealtime(server);
-startJobs();
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+  fatal(err.code === 'EADDRINUSE' ? `Port ${env.PORT} is already in use. Stop the other server or set PORT.` : `${err.name}: ${err.message}`);
+});
 
 server.listen(env.PORT, () => {
+  startJobs();
   logger.info(
     { url: env.PUBLIC_BASE_URL, mode: env.DEMO_MODE ? 'demo' : 'live', db: embedded ? 'embedded' : 'atlas', integrations: features },
     `Satark API listening on :${env.PORT}`,
@@ -48,11 +46,17 @@ async function shutdown(signal: string) {
   if (closing) return;
   closing = true;
   logger.info({ signal }, 'shutting down');
-  await stopJobs();
-  await closeRealtime();
-  server.close();
-  await closePdf();
-  await disconnectDb();
+  // Hosts send SIGKILL about 30 seconds after SIGTERM: never hang on a stuck connection.
+  setTimeout(() => process.exit(0), 10_000).unref();
+  try {
+    await stopJobs();
+    await closeRealtime();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await closePdf();
+    await disconnectDb();
+  } catch (err) {
+    logger.warn({ err }, 'error while shutting down');
+  }
   process.exit(0);
 }
 process.on('SIGINT', () => void shutdown('SIGINT'));

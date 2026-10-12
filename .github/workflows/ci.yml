@@ -28,5 +28,48 @@ jobs:
         env:
           # Complaint Kit PDFs: the runner's Google Chrome (chromium-browser is a snap stub on Ubuntu).
           CHROME_PATH: /usr/bin/google-chrome
+      - name: Build the API (what the Docker image runs)
+        run: npm run build --workspace backend
       - name: Build the police dashboard
         run: npm run build --workspace dashboard
+
+  api-image:
+    # The image Render runs, started the way Render starts it, against a real MongoDB.
+    # A start-up failure shows up here, with its log, before a deploy does.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mongo:
+        image: mongo:8
+        ports: ['27017:27017']
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the API image
+        run: docker build -f backend/Dockerfile -t satark-api .
+      - name: Start it and wait for /health
+        run: |
+          docker run -d --name api --network host \
+            -e RENDER=true -e PORT=10000 -e RENDER_EXTERNAL_URL=https://satark-api.onrender.com \
+            -e MONGODB_URI=mongodb://127.0.0.1:27017/satark \
+            -e JWT_SECRET=ci-jwt-secret-0123456789abcdef -e HASH_SECRET=ci-hash-secret-0123456789abcdef \
+            -e PHONE_ENC_KEY=ci-phone-key-0123456789abcdef -e ALLOWED_ORIGINS='*' \
+            satark-api
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:10000/health | grep -q '"ok":true' && break
+            sleep 2
+          done
+          docker logs api
+          curl -fsS http://127.0.0.1:10000/health | grep -q '"ok":true'
+      - name: Analyse a message and file a case (Complaint Kit PDF from Chromium)
+        run: |
+          curl -fsS -X POST http://127.0.0.1:10000/v1/analyze -H 'Content-Type: application/json' \
+            -d '{"source":"sms","text":"Your SBI KYC expires today. Update now at http://sbi-kyc-update.top or your account is blocked."}' \
+            | jq -e '.verdict != "safe"'
+          TOKEN=$(curl -fsS -X POST http://127.0.0.1:10000/v1/auth/device -H 'Content-Type: application/json' \
+            -d '{"device_id":"ci-smoke-device-01","name":"CI"}' | jq -r .token)
+          curl -fsS -X POST http://127.0.0.1:10000/v1/complaint -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -d '{"scam_type":"digital_arrest","elder":{"name":"CI"},"narrative":"Smoke test"}' \
+            | tee kit.json | jq -e '.pdf_format == "pdf"'
+      - name: Server log
+        if: always()
+        run: docker logs api || true

@@ -62,6 +62,28 @@ Then finish Twilio with the URLs from `/health`: see [TWILIO.md](TWILIO.md).
 - **No persistent disk.** Data is in Atlas, so nothing is lost, except PDFs when S3 is not configured.
 - **Never change `HASH_SECRET` or `PHONE_ENC_KEY` after first use.** Stored phone numbers and the community blocklist hashes depend on them.
 
+## If a deploy fails
+
+Open **satark-api → Logs** (not only the Events page). The first line of every start is
+
+```text
+Satark API starting (Node v22..., NODE_ENV=production, pid 1)
+```
+
+and a failed start always ends with **"Satark API could not start."** and the reason in plain words, for example:
+
+| Message | Fix |
+|---|---|
+| `Set MONGODB_URI ...` | Add the Atlas connection string under **Environment** |
+| `MONGODB_URI still contains a placeholder such as <db_password>` | Put the real password in, without the `< >` |
+| `MONGODB_URI is not a valid connection string` | Remove quotes and spaces; URL-encode `@ : / ? #` in the password |
+| `MongoDB rejected the username or password` | Reset the user's password in Atlas → Database Access |
+| `Could not reach the MongoDB cluster` | Atlas → Network Access → add `0.0.0.0/0`; check the cluster is not paused |
+| `Set JWT_SECRET, HASH_SECRET, PHONE_ENC_KEY` | The service was created by hand, not from the Blueprint: add the three as random 32+ character strings |
+| `Invalid configuration` | The named variable has a value the API does not accept (for example `DEMO_MODE=maybe`) |
+
+If "Satark API starting" never appears, the container did not start the API at all: check that the service has no **Docker Command** override in Settings (the image's own command is `node --enable-source-maps dist/server.mjs`).
+
 ## Run the same image locally
 
 ```bash

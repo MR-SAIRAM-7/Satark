@@ -14,6 +14,8 @@ import { env } from '../config/env';
 import { logger } from '../lib/logger';
 
 const RENDER_TIMEOUT_MS = 15_000;
+/** Close Chromium after a minute without a kit: it holds 100+ MB, and a small host has 512 MB in all. */
+const IDLE_CLOSE_MS = 60_000;
 
 // Forward slashes work on Windows too. On Linux, Google Chrome comes before
 // chromium-browser, which on Ubuntu is often a stub that launches a snap.
@@ -32,25 +34,38 @@ const CANDIDATES = [
 export const browserPath = CANDIDATES.find((p): p is string => Boolean(p && existsSync(p))) ?? null;
 
 let browser: Promise<Browser> | null = null;
+let idleTimer: NodeJS.Timeout | undefined;
 
 function launch(): Promise<Browser> {
   browser ??= puppeteer.launch({
     executablePath: browserPath!,
     headless: true,
     timeout: RENDER_TIMEOUT_MS,
-    // CI runners and containers: no sandbox, tiny /dev/shm, no GPU.
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run'],
+    // CI runners and containers: no sandbox, tiny /dev/shm, no GPU; nothing a PDF does not need.
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--mute-audio',
+    ],
   });
   return browser;
 }
 
 async function render(html: string): Promise<Buffer> {
+  clearTimeout(idleTimer);
   const page = await (await launch()).newPage();
   try {
     await page.setContent(html, { waitUntil: 'load', timeout: RENDER_TIMEOUT_MS });
     return Buffer.from(await page.pdf({ format: 'A4', printBackground: true, timeout: RENDER_TIMEOUT_MS }));
   } finally {
     await page.close().catch(() => undefined);
+    idleTimer = setTimeout(() => void closePdf(), IDLE_CLOSE_MS);
+    idleTimer.unref();
   }
 }
 
@@ -76,6 +91,7 @@ export async function htmlToPdf(html: string): Promise<Buffer | null> {
 }
 
 export async function closePdf(): Promise<void> {
+  clearTimeout(idleTimer);
   const current = browser;
   browser = null;
   await (await current?.catch(() => null))?.close().catch(() => undefined);

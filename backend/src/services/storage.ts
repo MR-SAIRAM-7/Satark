@@ -4,7 +4,7 @@
  * same way (about 10 minutes), served by GET /v1/files/*.
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join, normalize, resolve } from 'node:path';
+import { dirname, join, normalize, resolve, sep } from 'node:path';
 
 import { env, features } from '../config/env';
 import { signPath } from '../lib/crypto';
@@ -18,7 +18,8 @@ const s3 = features.s3
 
 function localPath(key: string): string {
   const path = normalize(join(LOCAL_ROOT, key));
-  if (!path.startsWith(LOCAL_ROOT)) throw new Error('Invalid file key');
+  // The separator matters: ".data/files-old/x" starts with ".data/files" too.
+  if (!path.startsWith(LOCAL_ROOT + sep)) throw new Error('Invalid file key');
   return path;
 }
 

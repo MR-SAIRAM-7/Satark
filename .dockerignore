@@ -8,6 +8,7 @@
 !**/.env.render.example
 
 backend/.data
+backend/dist
 dashboard/.next
 mobile/android
 mobile/ios

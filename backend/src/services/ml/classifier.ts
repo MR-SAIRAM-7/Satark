@@ -4,7 +4,7 @@
  * sublinear_tf=True, norm="l2") + LogisticRegression exactly; a parity test
  * checks the probabilities against scikit-learn's own.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,7 +22,9 @@ export interface MlResult {
   top: { feature: string; weight: number }[];
 }
 
-const MODEL_PATH = join(dirname(fileURLToPath(import.meta.url)), '../../../models/classifier.json');
+// backend/models, from the source file (src/services/ml) or from the production build (dist).
+const here = dirname(fileURLToPath(import.meta.url));
+const MODEL_PATH = [join(here, '../../../models/classifier.json'), join(here, '../models/classifier.json')].find((p) => existsSync(p)) ?? join(here, '../../../models/classifier.json');
 
 export class TfidfLogistic {
   readonly version: string;

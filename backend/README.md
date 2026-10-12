@@ -1,6 +1,6 @@
 # Satark API
 
-Node.js + Express 5 (TypeScript, run with `tsx`) on MongoDB. It adds detection layers 3-5 on top of the phone's layers 1-2, keeps the community blocklist, files complaint cases, alerts families, drives the police dashboard over Socket.IO, and runs the automations on a schedule.
+Node.js + Express 5 (TypeScript: `tsx` in development, compiled to `dist/` with esbuild for production) on MongoDB. It adds detection layers 3-5 on top of the phone's layers 1-2, keeps the community blocklist, files complaint cases, alerts families, drives the police dashboard over Socket.IO, and runs the automations on a schedule.
 
 Everything is optional: with no `.env` at all the API starts an embedded MongoDB, seeds demo data and runs in demo mode, so every outbound WhatsApp or push is recorded in the outbox instead of being sent.
 
@@ -16,8 +16,10 @@ npm run backend        # API only, with reload
 |---|---|
 | `npm run dev` | API with reload (`tsx watch`) |
 | `npm start` | API without reload |
+| `npm run build` | Compile to `dist/server.mjs` (what the Docker image runs) |
+| `npm run start:prod` | Run the compiled API: `node dist/server.mjs` |
 | `npm run seed` | Wipe and re-seed the demo data (stop the API first when using the embedded database, or use **Demo → Reset** on the dashboard) |
-| `npm test` | 43 API tests on a throwaway in-memory MongoDB |
+| `npm test` | 47 API tests on a throwaway in-memory MongoDB |
 | `npm run typecheck` | TypeScript |
 
 First start downloads a MongoDB binary for the embedded database (about 800 MB, cached in your user folder). Set `MONGODB_URI` to use Atlas instead.
@@ -89,4 +91,4 @@ Every job records what it has done (reminder tags, escalation counts), so a rest
 ## Not yet verified
 
 - **Live providers:** the Gemini, OpenRouter, Sarvam, Twilio, Safe Browsing and S3 calls follow the providers' current API docs but have not been run against real keys here. Without keys every path falls back and is covered by tests.
-- **Docker:** the Dockerfiles and `docker-compose.yml` were written but not built on this machine (no Docker installed).
+- **Docker:** not built on this machine (no Docker installed). CI builds the API image on every push and boots it against MongoDB (`api-image` job); the compiled server it runs was tested here against a production-only install.

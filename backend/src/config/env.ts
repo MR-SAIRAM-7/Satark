@@ -9,27 +9,39 @@ import { resolve } from 'node:path';
 
 import { z } from 'zod';
 
+import { fatal } from '../lib/startup';
+
 const envFile = resolve(process.cwd(), '.env');
 if (existsSync(envFile) && process.env.NODE_ENV !== 'test') process.loadEnvFile(envFile);
 
 // Complaint dates and the dashboard's hourly buckets are in Indian time, wherever the server runs.
 process.env.TZ ??= 'Asia/Kolkata';
 
+// Values typed into a hosting dashboard: "True", "yes" and "on" mean what they say.
 const flag = (fallback: boolean) =>
   z
-    .enum(['true', 'false', '1', '0', ''])
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.enum(['true', 'false', '1', '0', 'yes', 'no', 'on', 'off', '']))
     .optional()
-    .transform((v) => (v === undefined || v === '' ? fallback : v === 'true' || v === '1'));
+    .transform((v) => (v === undefined || v === '' ? fallback : ['true', '1', 'yes', 'on'].includes(v)));
 const optional = z.string().trim().optional().transform((v) => v || undefined);
+/** A value pasted with its quotes ("mongodb+srv://...") still works. */
+const unquoted = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => v?.replace(/^(['"])(.*)\1$/, '$2').trim() || undefined);
 
 const DEV_SECRET = 'satark-dev-secret-change-me-in-production';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().default(8000),
-  LOG_LEVEL: z.string().default('info'),
+  LOG_LEVEL: z.string().trim().toLowerCase().pipe(z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])).default('info'),
   /** Empty: an embedded MongoDB that persists to backend/.data (tests use a throwaway one). */
-  MONGODB_URI: optional,
+  MONGODB_URI: unquoted,
   JWT_SECRET: z.string().min(16).default(DEV_SECRET),
   HASH_SECRET: z.string().min(16).default(DEV_SECRET),
   PHONE_ENC_KEY: z.string().min(16).default(DEV_SECRET),
@@ -76,24 +88,26 @@ const provided = Object.fromEntries(Object.entries(process.env).filter(([, value
 // On Render the service's public address is known to the platform, so it never has to be typed in.
 provided.PUBLIC_BASE_URL ??= provided.RENDER_EXTERNAL_URL;
 const parsed = schema.safeParse(provided);
-if (!parsed.success) {
-  console.error('Invalid configuration:', z.prettifyError(parsed.error));
-  process.exit(1);
-}
+if (!parsed.success) fatal(`Invalid configuration (check these environment variables):\n${z.prettifyError(parsed.error)}`);
 
 export const env = parsed.data;
 
 if (env.NODE_ENV === 'production') {
   const weak = (['JWT_SECRET', 'HASH_SECRET', 'PHONE_ENC_KEY'] as const).filter((k) => env[k] === DEV_SECRET);
   if (weak.length) {
-    console.error(`Set ${weak.join(', ')} before running in production.`);
-    process.exit(1);
+    fatal(
+      `Set ${weak.join(', ')} before running in production: each a random string of 32+ characters.\n` +
+        'On Render the Blueprint (render.yaml) generates them; for a service created by hand, add them under Environment.\n' +
+        'Never change HASH_SECRET or PHONE_ENC_KEY afterwards: stored phone numbers depend on them.',
+    );
   }
   // The embedded database downloads an 800 MB MongoDB binary and keeps its data on local disk.
   // A hosted container has neither the memory nor a disk that survives a restart.
   if (process.env.RENDER && !env.MONGODB_URI) {
-    console.error('Set MONGODB_URI (MongoDB Atlas connection string) in the Render dashboard. See docs/DEPLOY.md.');
-    process.exit(1);
+    fatal('Set MONGODB_URI (MongoDB Atlas connection string) in the Render dashboard > Environment. See docs/DEPLOY.md.');
+  }
+  if (env.MONGODB_URI && /<[^>]*>/.test(env.MONGODB_URI)) {
+    fatal('MONGODB_URI still contains a placeholder such as <db_password>. Replace it, including the < >, with the real value.');
   }
 }
 

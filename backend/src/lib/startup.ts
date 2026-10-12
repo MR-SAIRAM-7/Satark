@@ -3,6 +3,26 @@
  * that dies with a bare stack trace (or nothing at all) costs a rebuild to
  * diagnose; almost every real failure here is the database connection string.
  */
+import { writeSync } from 'node:fs';
+
+/**
+ * Write straight to stderr. On Linux, process.stderr is asynchronous when it is
+ * a pipe (as in a container), so a message followed by process.exit() can be
+ * lost; a synchronous write cannot.
+ */
+export function say(text: string): void {
+  try {
+    writeSync(2, `${text}\n`);
+  } catch {
+    console.error(text);
+  }
+}
+
+/** Print why the API cannot run, then stop with a failure code. */
+export function fatal(text: string): never {
+  say(`\nSatark API could not start.\n${text}\n`);
+  process.exit(1);
+}
 
 /** Never echo credentials from a connection string into the logs. */
 const redact = (text: string) => text.replace(/(mongodb(?:\+srv)?:\/\/)[^@\s/]+@/gi, '$1***@');
@@ -38,11 +58,25 @@ export function explainStartupError(err: unknown): string {
       detail,
     ].join('\n');
   }
+  if (text.includes('econnrefused') && /127\.0\.0\.1|localhost|::1/.test(text)) {
+    return [
+      'MONGODB_URI points at a MongoDB on this machine (localhost), and none is running here.',
+      'On a hosted service, use the MongoDB Atlas connection string instead (see docs/DEPLOY.md).',
+      detail,
+    ].join('\n');
+  }
   if (name === 'MongooseServerSelectionError' || text.includes('server selection') || text.includes('timed out') || text.includes('whitelist')) {
     return [
       'Could not reach the MongoDB cluster.',
       'In Atlas > Network Access, add 0.0.0.0/0 (allow access from anywhere): hosted services have no fixed address.',
       'Also check the cluster is not paused.',
+      detail,
+    ].join('\n');
+  }
+  if (text.includes('not authorized') || error?.code === 13) {
+    return [
+      'The MongoDB user in MONGODB_URI may not write to this database.',
+      'In Atlas > Database Access, give the user the "Read and write to any database" role.',
       detail,
     ].join('\n');
   }
