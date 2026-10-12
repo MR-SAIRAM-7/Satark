@@ -1,0 +1,308 @@
+{
+  "trained_at": "2026-10-12T13:51:59+00:00",
+  "corpus": {
+    "train": 3652,
+    "test": 1062,
+    "attack": 1372,
+    "test_templates_unseen_in_training": 35
+  },
+  "model": {
+    "C": 0.5,
+    "features": 11957,
+    "analyzer": "char_wb",
+    "ngram_range": "(3, 5)",
+    "lowercase": "False",
+    "sublinear_tf": "True",
+    "min_df": "3",
+    "max_features": "12000"
+  },
+  "cv_average_precision": 0.9643,
+  "test_average_precision": 0.9993,
+  "test_at_suspicious": {
+    "threshold": 40,
+    "precision": 0.9274,
+    "recall": 1.0,
+    "f1": 0.9624,
+    "false_positive_rate": 0.097,
+    "accuracy": 0.9567,
+    "confusion_matrix": {
+      "tn": 428,
+      "fp": 46,
+      "fn": 0,
+      "tp": 588
+    }
+  },
+  "test_at_scam": {
+    "threshold": 70,
+    "precision": 1.0,
+    "recall": 0.682,
+    "f1": 0.8109,
+    "false_positive_rate": 0.0,
+    "accuracy": 0.8239,
+    "confusion_matrix": {
+      "tn": 474,
+      "fp": 0,
+      "fn": 187,
+      "tp": 401
+    }
+  },
+  "recall_by_scam_type": {
+    "courier": {
+      "n": 40,
+      "recall_at_suspicious": 1.0
+    },
+    "digital_arrest": {
+      "n": 80,
+      "recall_at_suspicious": 1.0
+    },
+    "electricity": {
+      "n": 40,
+      "recall_at_suspicious": 1.0
+    },
+    "family_emergency": {
+      "n": 40,
+      "recall_at_suspicious": 1.0
+    },
+    "investment": {
+      "n": 40,
+      "recall_at_suspicious": 1.0
+    },
+    "job_task": {
+      "n": 40,
+      "recall_at_suspicious": 1.0
+    },
+    "kyc_bank": {
+      "n": 80,
+      "recall_at_suspicious": 1.0
+    },
+    "lottery": {
+      "n": 40,
+      "recall_at_suspicious": 1.0
+    },
+    "malware_apk": {
+      "n": 40,
+      "recall_at_suspicious": 1.0
+    },
+    "phishing_link": {
+      "n": 40,
+      "recall_at_suspicious": 1.0
+    },
+    "remote_access": {
+      "n": 40,
+      "recall_at_suspicious": 1.0
+    },
+    "sim_block": {
+      "n": 28,
+      "recall_at_suspicious": 1.0
+    },
+    "upi_collect": {
+      "n": 40,
+      "recall_at_suspicious": 1.0
+    }
+  },
+  "under_attack": {
+    "recall_with_layer1": 1.0,
+    "recall_without_layer1": 0.9927,
+    "by_disguise": {
+      "combined": {
+        "n": 196,
+        "recall_with_layer1": 1.0,
+        "recall_without_layer1": 0.9694
+      },
+      "emoji_padding": {
+        "n": 196,
+        "recall_with_layer1": 1.0,
+        "recall_without_layer1": 1.0
+      },
+      "homoglyphs": {
+        "n": 196,
+        "recall_with_layer1": 1.0,
+        "recall_without_layer1": 0.9898
+      },
+      "leetspeak": {
+        "n": 196,
+        "recall_with_layer1": 1.0,
+        "recall_without_layer1": 1.0
+      },
+      "prompt_injection": {
+        "n": 196,
+        "recall_with_layer1": 1.0,
+        "recall_without_layer1": 1.0
+      },
+      "spacing": {
+        "n": 196,
+        "recall_with_layer1": 1.0,
+        "recall_without_layer1": 1.0
+      },
+      "zero_width": {
+        "n": 196,
+        "recall_with_layer1": 1.0,
+        "recall_without_layer1": 0.9898
+      }
+    }
+  },
+  "top_scam_features": [
+    [
+      "xxxxx",
+      1.58
+    ],
+    [
+      "xxx",
+      1.191
+    ],
+    [
+      "xxxx",
+      1.191
+    ],
+    [
+      "://",
+      0.997
+    ],
+    [
+      "ins",
+      0.958
+    ],
+    [
+      " htt",
+      0.89
+    ],
+    [
+      "ttp",
+      0.89
+    ],
+    [
+      " http",
+      0.89
+    ],
+    [
+      " ht",
+      0.89
+    ],
+    [
+      "htt",
+      0.89
+    ],
+    [
+      "http",
+      0.89
+    ],
+    [
+      " to",
+      0.856
+    ],
+    [
+      " ins",
+      0.806
+    ],
+    [
+      " si",
+      0.797
+    ],
+    [
+      " i ",
+      0.749
+    ],
+    [
+      "ve ",
+      0.726
+    ],
+    [
+      "ock",
+      0.724
+    ],
+    [
+      "to ",
+      0.719
+    ],
+    [
+      "nst",
+      0.715
+    ],
+    [
+      "inst",
+      0.715
+    ],
+    [
+      "tion",
+      0.713
+    ],
+    [
+      "tio",
+      0.713
+    ],
+    [
+      " to ",
+      0.703
+    ],
+    [
+      "000 ",
+      0.697
+    ],
+    [
+      " our ",
+      0.695
+    ]
+  ],
+  "top_genuine_features": [
+    [
+      " xx",
+      -0.932
+    ],
+    [
+      "-26",
+      -0.919
+    ],
+    [
+      "for ",
+      -0.849
+    ],
+    [
+      " for",
+      -0.849
+    ],
+    [
+      " for ",
+      -0.849
+    ],
+    [
+      " fo",
+      -0.849
+    ],
+    [
+      "oct",
+      -0.829
+    ],
+    [
+      " xxx",
+      -0.808
+    ],
+    [
+      " xxxx",
+      -0.808
+    ],
+    [
+      "for",
+      -0.803
+    ],
+    [
+      "ct-",
+      -0.8
+    ],
+    [
+      "-oc",
+      -0.8
+    ],
+    [
+      "oct-2",
+      -0.8
+    ],
+    [
+      "oct-",
+      -0.8
+    ],
+    [
+      "-oct",
+      -0.8
+    ]
+  ]
+}

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Satark detection layers 1-2 (clean-up, India rules), masking and the verdict contract. Runs unchanged on the phone and the server.",
+  "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "sideEffects": false,

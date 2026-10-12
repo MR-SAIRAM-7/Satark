@@ -5,16 +5,27 @@
   "description": "Satark - AI Scam Shield for Senior Citizens",
   "workspaces": [
     "shared",
+    "backend",
+    "dashboard",
     "mobile"
   ],
   "scripts": {
+    "dev": "concurrently -n api,dashboard -c blue,magenta \"npm run dev --workspace backend\" \"npm run dev --workspace dashboard\"",
+    "backend": "npm run dev --workspace backend",
+    "seed": "npm run seed --workspace backend",
+    "dashboard": "npm run dev --workspace dashboard",
     "mobile": "npm run start --workspace mobile",
     "mobile:web": "npm run web --workspace mobile",
+    "ml:corpus": "tsx ml/generate.ts",
+    "ml:train": "python ml/train.py",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
   }
 }

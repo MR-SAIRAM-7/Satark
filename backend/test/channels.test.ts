@@ -1,0 +1,72 @@
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+
+import { io as connect } from 'socket.io-client';
+import { afterAll, describe, expect, it } from 'vitest';
+
+import { GuardianLink, Ioc } from '../src/db/models';
+import { attachRealtime, closeRealtime } from '../src/services/realtime';
+import { api, app, bearer, DIGITAL_ARREST, signIn, useDatabase } from './helpers';
+
+useDatabase();
+
+describe('WhatsApp bot (Twilio webhook)', () => {
+  const inbound = (Body: string, From = 'whatsapp:+919876500000') =>
+    api().post('/v1/whatsapp/inbound').type('form').send({ From, Body }).expect(200).expect('Content-Type', /xml/);
+
+  it('replies with the verdict in the language of the message', async () => {
+    const english = await inbound(DIGITAL_ARREST);
+    expect(english.text).toContain('SCAM');
+    expect(english.text).toContain('1930');
+
+    const telugu = await inbound('మీ ఆధార్ కార్డు మనీ లాండరింగ్ కేసులో ఉంది. ఎవరికీ చెప్పకండి. వెంటనే డబ్బు పంపండి, అరెస్ట్ వారెంట్ వచ్చింది.');
+    expect(telugu.text).toMatch(/[ఀ-౿]/);
+  });
+
+  it('adds identifiers to the blocklist when the user replies REPORT', async () => {
+    await inbound('Dear customer your SBI account will be blocked today. Update KYC at http://sbi-kyc-verify.live now', 'whatsapp:+919876500001');
+    const reply = await inbound('REPORT', 'whatsapp:+919876500001');
+    expect(reply.text).toContain('added');
+    expect(await Ioc.exists({ type: 'domain', value: 'sbi-kyc-verify.live' })).toBeTruthy();
+  });
+});
+
+describe('Home Guardian live call (F10)', () => {
+  let server: Server;
+  afterAll(async () => {
+    await closeRealtime();
+    server?.close();
+  });
+
+  it("sends the CUT signal to the elder's phone at stage 4+ and score 85+", async () => {
+    server = createServer(app);
+    attachRealtime(server);
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const url = `http://localhost:${(server.address() as AddressInfo).port}`;
+
+    const elder = await signIn('+919123400070', { name: 'Lakshmi' });
+    const listener = await api().post('/v1/auth/device').send({ device_id: 'listener-test-001', role: 'listener' }).expect(200);
+    await GuardianLink.create({ elder: elder.user.id, guardian: listener.body.user.id, relation: 'home guardian phone' });
+
+    const socket = connect(url, { auth: { token: elder.token }, transports: ['websocket'] });
+    await new Promise((resolve) => socket.on('connect', resolve));
+    const cut = new Promise<{ stage: number; score: number; countdown: number }>((resolve) => socket.on('cut', resolve));
+
+    const lines = [
+      'Hello madam, I am calling from Mumbai Police Crime Branch.',
+      'Your Aadhaar is in a money laundering case. An arrest warrant is issued in your name.',
+      'Do not tell anyone. Do not disconnect the call.',
+      'To clear your name, transfer the amount to the RBI verification account immediately.',
+    ];
+    let last;
+    for (const text of lines) {
+      last = await api().post('/v1/listen/text').set(bearer(listener.body.token)).send({ session_id: 'call-test-1', text }).expect(200);
+    }
+    expect(last!.body.cut).toBe(true);
+    const signal = await cut;
+    expect(signal.stage).toBeGreaterThanOrEqual(4);
+    expect(signal.score).toBeGreaterThanOrEqual(85);
+    expect(signal.countdown).toBe(10);
+    socket.close();
+  });
+});

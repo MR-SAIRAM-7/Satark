@@ -2,6 +2,18 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "satark-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "--workspace", "backend"],
+      "port": 8000
+    },
+    {
+      "name": "satark-dashboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "dashboard"],
+      "port": 3000
+    },
+    {
       "name": "satark-web",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "web", "--workspace", "mobile", "--", "--port", "8081"],

@@ -1,0 +1,26 @@
+# Local stack: MongoDB + API + police dashboard.
+#   docker compose up --build
+services:
+  mongo:
+    image: mongo:8
+    volumes: [mongo-data:/data/db]
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/satark
+      JWT_SECRET: change-me-local-jwt-secret
+      HASH_SECRET: change-me-local-hash-secret
+      PHONE_ENC_KEY: change-me-local-phone-key
+      PUBLIC_BASE_URL: http://localhost:8000
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8081
+      DEMO_MODE: "true"
+    ports: ["8000:8000"]
+    depends_on: [mongo]
+  dashboard:
+    build: { context: ., dockerfile: dashboard/Dockerfile }
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/v1
+    ports: ["3000:3000"]
+    depends_on: [api]
+volumes:
+  mongo-data:

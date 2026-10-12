@@ -1,0 +1,55 @@
+{
+  "name": "@satark/backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Satark API: detection layers 3-5, community intelligence, complaint cases, alerts and the police dashboard feed.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/server.ts",
+    "start": "tsx src/server.ts",
+    "seed": "tsx src/seed/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1149.0",
+    "@aws-sdk/s3-request-presigner": "^3.1149.0",
+    "@satark/shared": "*",
+    "cors": "^2.8.6",
+    "density-clustering": "^1.3.0",
+    "expo-server-sdk": "^7.2.0",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "lru-cache": "^11.5.3",
+    "mongodb-memory-server": "^11.3.0",
+    "mongoose": "^9.11.1",
+    "multer": "^2.4.0",
+    "node-cron": "^4.6.0",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "puppeteer-core": "^25.13.0",
+    "socket.io": "^4.8.4",
+    "tsx": "^4.23.15",
+    "twilio": "^6.1.2",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/density-clustering": "^1.3.3",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^7.2.1",
+    "pino-pretty": "^13.2.0",
+    "socket.io-client": "^4.8.4",
+    "supertest": "^7.3.1",
+    "typescript": "~6.0.3",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
