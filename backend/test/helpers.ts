@@ -27,6 +27,12 @@ export async function signIn(phone: string, extra: Record<string, unknown> = {})
 
 export const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
 
+/** An app install's anonymous session (what the phone does on first launch). */
+export async function device(deviceId: string, extra: Record<string, unknown> = {}) {
+  const res = await api().post('/v1/auth/device').send({ device_id: deviceId, ...extra }).expect(200);
+  return res.body as { token: string; user: { id: string; role: string } };
+}
+
 /** Poll until `check` returns a truthy value (side effects such as alerts run after the response). */
 export async function until<T>(check: () => Promise<T>, timeoutMs = 4000): Promise<T> {
   const deadline = Date.now() + timeoutMs;

@@ -23,7 +23,7 @@ export async function summary() {
     Ioc.countDocuments({ status: 'confirmed' }),
     Complaint.countDocuments({ stage: { $ne: 'io_assigned' } }),
     Complaint.countDocuments({ priority: 'golden_hour', goldenHourEndsAt: { $gt: new Date() } }),
-    Alert.countDocuments({ severity: 'critical', ackedAt: null }),
+    Alert.countDocuments({ severity: 'critical', ackedAt: null, createdAt: { $gte: day } }),
     User.countDocuments({ role: 'elder' }),
     sumAmount({ stage: { $nin: HELD_STAGES } }),
     sumAmount({ stage: { $in: HELD_STAGES } }),

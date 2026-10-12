@@ -50,6 +50,8 @@ export interface PersonInput {
 export interface CaseInput {
   userId?: string;
   clientId?: string;
+  /** Phone-side ids of the checks behind this case (for de-duplication). */
+  relatedClientIds?: string[];
   source: ComplaintDoc['source'];
   scamType: ScamType;
   lang?: string;
@@ -160,6 +162,7 @@ export async function createCase(input: CaseInput): Promise<ComplaintDoc> {
     ref: newRef(),
     user: input.userId,
     clientId: input.clientId,
+    clientIds: [...new Set([input.clientId, ...(input.relatedClientIds ?? [])].filter((id): id is string => Boolean(id)))],
     source: input.source,
     scamType,
     elder: person(input.elder),
@@ -209,6 +212,36 @@ export async function createCase(input: CaseInput): Promise<ComplaintDoc> {
     });
   }
   await audit('case.filed', input.userId ?? 'satark', complaint.ref, { source: input.source, priority: complaint.priority });
+  return complaint;
+}
+
+/**
+ * The phone files a kit for a conversation the server already opened a case for
+ * (a golden-hour case). Fold the phone's fuller account into that case instead
+ * of creating a second one; the family has already had the kit-ready message.
+ */
+export async function mergeIntoCase(complaint: ComplaintDoc, input: CaseInput): Promise<ComplaintDoc> {
+  const known = new Set(complaint.evidence.map((e) => e.sha256));
+  for (const e of input.evidence ?? []) {
+    const hash = sha256(e.content);
+    if (!known.has(hash)) complaint.evidence.push({ ...e, sha256: hash });
+  }
+  const merge = (a: string[] | undefined, b: string[] | undefined) => [...new Set([...(a ?? []), ...(b ?? [])])];
+  complaint.suspect = {
+    phones: merge(complaint.suspect?.phones, input.suspect?.phones),
+    upiIds: merge(complaint.suspect?.upiIds, input.suspect?.upiIds),
+    links: merge(complaint.suspect?.links, input.suspect?.links),
+  };
+  if (input.narrative) complaint.narrative = input.narrative;
+  if (input.summary) complaint.summary = input.summary;
+  if (input.elder?.phone && !complaint.elder?.phoneEnc) {
+    complaint.set('elder', { ...person(input.elder), name: complaint.elder?.name || input.elder.name || '' });
+  }
+  if (input.guardian?.phone && !complaint.guardian?.phoneEnc) complaint.set('guardian', person(input.guardian));
+  complaint.clientIds = merge(complaint.clientIds, [input.clientId, ...(input.relatedClientIds ?? [])].filter((id): id is string => Boolean(id)));
+  await complaint.save();
+  await buildKit(complaint).catch(() => null);
+  emitToPolice('case:update', caseView(complaint));
   return complaint;
 }
 
@@ -304,6 +337,7 @@ export async function goldenHourCase(input: {
   const complaint = await createCase({
     userId: input.userId,
     clientId: related.clientId ?? undefined,
+    relatedClientIds: thread.map((c) => c.clientId).filter((id): id is string => Boolean(id)),
     source: 'golden_hour',
     scamType: related.scamType as ScamType,
     lang: user?.lang ?? 'en',
@@ -320,7 +354,7 @@ export async function goldenHourCase(input: {
   });
   // Use the user's own encrypted number if the case has none.
   if (user?.phoneEnc && !complaint.elder?.phoneEnc) {
-    complaint.elder = { ...complaint.elder, phoneEnc: user.phoneEnc, phoneMasked: user.phoneMasked ?? undefined };
+    complaint.set('elder', { name: complaint.elder?.name ?? '', phoneEnc: user.phoneEnc, phoneMasked: user.phoneMasked ?? undefined });
     await complaint.save();
   }
   return {

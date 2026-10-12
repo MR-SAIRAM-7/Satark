@@ -152,6 +152,8 @@ const complaintSchema = new Schema(
     ref: { type: String, required: true, unique: true },
     user: { type: ObjectId, ref: 'User', index: true },
     clientId: String,
+    /** Every phone-side id this case covers (its checks, the phone's complaint id): filing is idempotent on these. */
+    clientIds: { type: [String], default: [], index: true },
     source: { type: String, enum: ['app', 'golden_hour', 'whatsapp', 'listener', 'seed', 'simulator'], default: 'app' },
     scamType: { type: String, enum: SCAM_TYPES, default: 'unknown', index: true },
     elder: { type: personSchema, default: {} },

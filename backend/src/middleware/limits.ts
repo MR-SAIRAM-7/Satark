@@ -9,3 +9,5 @@ const limit = (windowMs: number, limit: number) =>
 export const globalLimiter = limit(60_000, 600);
 export const analyzeLimiter = limit(60_000, 120);
 export const authLimiter = limit(10 * 60_000, 30);
+/** Device sign-in is cheap and repeats on role switches; several demo phones may share one IP. */
+export const deviceLimiter = limit(10 * 60_000, 200);

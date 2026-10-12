@@ -48,6 +48,12 @@ describe('seeded demo and the police dashboard', () => {
     expect(weather.body.text.te).toMatch(/[ఀ-౿]/);
   });
 
+  it('keeps signed-in sessions valid across a demo reset (seeded accounts keep their ids)', async () => {
+    await seed({ days: 2 });
+    await api().get('/v1/dashboard/summary').set(bearer(token)).expect(200);
+    await seed({ days: 7 });
+  });
+
   it('looks up a raw number against the hashed intel', async () => {
     const { body } = await api().get('/v1/iocs/lookup?type=phone&value=90000 54321').set(bearer(token)).expect(200);
     expect(body.found).toBe(true);

@@ -1,10 +1,9 @@
 /** The routes the Satark app calls (services/api/http.ts in the mobile app). */
 import { analyzeRequestSchema, parseTxnSms, scamTypeSchema } from '@satark/shared';
-import { Router, type Request } from 'express';
+import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
 
-import { sha256 } from '../lib/crypto';
 import { HttpError } from '../lib/errors';
 import { optionalAuth, requireAuth } from '../middleware/auth';
 import { analyzeLimiter } from '../middleware/limits';
@@ -15,23 +14,21 @@ import { reportIndicators, syncIocs } from '../services/intel';
 import { addLine, getSession } from '../services/listen';
 
 export const detectionRouter = Router();
-detectionRouter.use(optionalAuth);
+const app = requireAuth('elder', 'guardian', 'listener');
 
-/** Distinct reporters: a user, or a fingerprint of an anonymous install. */
-const reporterOf = (req: Request) => req.user?.id ?? `anon:${sha256(`${req.ip}|${req.headers['user-agent'] ?? ''}`).slice(0, 16)}`;
-
-detectionRouter.post('/analyze', analyzeLimiter, async (req, res) => {
+/** Anyone may ask "is this safe?" (rate-limited); a signed-in elder's checks also alert their family. */
+detectionRouter.post('/analyze', analyzeLimiter, optionalAuth, async (req, res) => {
   const body = analyzeRequestSchema.parse(req.body);
   const { response, explain } = await analyzeMessage(body, { user: req.user, channel: req.user?.role === 'police' ? 'dashboard' : 'app' });
   res.json({ ...response, ...explain });
 });
 
-detectionRouter.post('/tts', async (req, res) => {
+detectionRouter.post('/tts', app, async (req, res) => {
   const { text, lang } = z.object({ text: z.string().min(1).max(2400), lang: z.string().min(2).max(5) }).parse(req.body);
   res.json({ audio: await tts(text, lang).catch(() => null) });
 });
 
-detectionRouter.post('/translate', async (req, res) => {
+detectionRouter.post('/translate', app, async (req, res) => {
   const { texts, lang } = z.object({ texts: z.array(z.string().max(2000)).max(400), lang: z.string().min(2).max(5) }).parse(req.body);
   res.json({ texts: await translateMany(texts, lang).catch(() => null) });
 });
@@ -39,10 +36,11 @@ detectionRouter.post('/translate', async (req, res) => {
 // Audio is held in memory only, 2 MB at most (about 5 seconds of WAV with headroom).
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024, files: 1 } });
 
-detectionRouter.post('/listen', upload.single('audio'), async (req, res) => {
+detectionRouter.post('/listen', app, upload.single('audio'), async (req, res) => {
   const { session_id, caller } = z.object({ session_id: z.string().min(4).max(64), caller: z.string().max(32).optional() }).parse(req.body);
   if (!req.file) throw new HttpError(400, 'audio file required');
   if (!/^audio\//.test(req.file.mimetype) && req.file.mimetype !== 'application/octet-stream') throw new HttpError(415, 'Audio only');
+  assertSessionOwner(session_id, req.user!.id);
   const heard = await stt(req.file.buffer, req.file.mimetype).catch(() => null);
   if (!heard) {
     res.status(503).json({ error: 'Speech-to-text unavailable', transcript: '' });
@@ -53,19 +51,26 @@ detectionRouter.post('/listen', upload.single('audio'), async (req, res) => {
 });
 
 /** Text lines for the Home Guardian (demo script, or on-device speech recognition). */
-detectionRouter.post('/listen/text', async (req, res) => {
+detectionRouter.post('/listen/text', app, async (req, res) => {
   const { session_id, text, caller } = z
     .object({ session_id: z.string().min(4).max(64), text: z.string().min(1).max(1000), caller: z.string().max(32).optional() })
     .parse(req.body);
+  assertSessionOwner(session_id, req.user!.id);
   const state = await addLine(session_id, text, req.user, caller);
   res.json({ transcript: text, stage: state.stage, score: state.score, cut: state.cut, evidence: state.evidence });
 });
 
-detectionRouter.get('/listen/:sessionId', (req, res) => {
+detectionRouter.get('/listen/:sessionId', app, (req, res) => {
   const state = getSession(String(req.params.sessionId));
-  if (!state) throw new HttpError(404, 'No such session');
+  if (!state || state.owner !== req.user!.id) throw new HttpError(404, 'No such session');
   res.json(state);
 });
+
+/** A live-call session belongs to the phone that started it. */
+function assertSessionOwner(sessionId: string, userId: string) {
+  const state = getSession(sessionId);
+  if (state && state.owner !== userId) throw new HttpError(403, 'This listening session belongs to another phone');
+}
 
 const reportSchema = z.object({
   check_id: z.string().max(64).optional(),
@@ -76,10 +81,11 @@ const reportSchema = z.object({
     .max(20),
 });
 
-detectionRouter.post('/report', async (req, res) => {
+/** One report per account: three different accounts confirm an indicator. */
+detectionRouter.post('/report', app, async (req, res) => {
   const body = reportSchema.parse(req.body);
   const { report, iocs } = await reportIndicators({
-    reporter: reporterOf(req),
+    reporter: req.user!.id,
     userId: req.user?.id,
     indicators: body.indicators,
     scamType: body.scam_type,

@@ -16,7 +16,7 @@ import {
   type LangCode,
   type ScamType,
 } from '@satark/shared';
-import type { Model, Types } from 'mongoose';
+import { Types, type Model } from 'mongoose';
 
 import {
   Alert,
@@ -35,6 +35,7 @@ import {
 import { encrypt, indicatorHash, phoneHash, sha256 } from '../lib/crypto';
 import { LOCALITIES, locate } from '../lib/geo';
 import { logger } from '../lib/logger';
+import { forgetAllSessions } from '../middleware/auth';
 import { clusterCampaigns } from '../services/campaigns';
 import { COMMUNITY_SEED, DEMO_CASES, DEMO_ELDERS, DEMO_POLICE, MESSAGES, SAFE_MESSAGES, TYPE_WEIGHTS } from './data';
 
@@ -49,7 +50,16 @@ function rng(seed: number) {
   };
 }
 
-const person = (p: { name: string; phone: string }) => ({ name: p.name, phoneHash: phoneHash(p.phone), phoneEnc: encrypt(p.phone), phoneMasked: maskPhone(p.phone) });
+/** Same id on every reset, so signed-in sessions (dashboard, demo phones) survive "Reset demo data". */
+const seedId = (key: string) => new Types.ObjectId(sha256(`seed-user:${key}`).slice(0, 24));
+
+const person = (p: { name: string; phone: string }) => ({
+  _id: seedId(p.phone),
+  name: p.name,
+  phoneHash: phoneHash(p.phone),
+  phoneEnc: encrypt(p.phone),
+  phoneMasked: maskPhone(p.phone),
+});
 
 /** Busy localities get more reports; the weights are invented for the demo. */
 const LOCALITY_WEIGHTS: [string, number][] = Object.keys(LOCALITIES).map((name, i) => [name, i < 6 ? 6 : i < 14 ? 3 : 1]);
@@ -92,7 +102,14 @@ export async function seed({ days = 14 } = {}) {
     await GuardianLink.create({ elder: elders[i]!._id, guardian: g._id, relation: e.guardian.relation });
     guardians.push(g._id);
   }
-  const homeGuardian = await User.create({ role: 'listener', name: 'Home Guardian (Lakshmi)', deviceId: 'demo-home-guardian', locality: 'Kukatpally', lang: 'te' });
+  const homeGuardian = await User.create({
+    _id: seedId('demo-home-guardian'),
+    role: 'listener',
+    name: 'Home Guardian (Lakshmi)',
+    deviceId: 'demo-home-guardian',
+    locality: 'Kukatpally',
+    lang: 'te',
+  });
   await GuardianLink.create({ elder: elders[0]!._id, guardian: homeGuardian._id, relation: 'home guardian phone' });
 
   // --- community intelligence --------------------------------------------------------------
@@ -350,6 +367,7 @@ export async function seed({ days = 14 } = {}) {
     campaigns,
     homeGuardian: homeGuardian.id,
   };
+  forgetAllSessions(); // accounts were re-created: re-check every token once
   logger.info(counts, 'demo data seeded');
   return counts;
 }

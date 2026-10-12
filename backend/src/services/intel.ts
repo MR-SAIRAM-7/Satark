@@ -93,7 +93,9 @@ export async function reportIndicators(input: ReportInput) {
   const at = input.at ?? new Date();
   const results = await Promise.all(input.indicators.map((i) => upsertIndicator(i, input.reporter, input.scamType, at)));
   const place = locate(input.locality);
-  const check = input.clientCheckId ? await Check.findOne({ clientId: input.clientCheckId }).sort({ createdAt: -1 }) : null;
+  // Only the reporter's own check: a report must not copy someone else's message text.
+  const check =
+    input.clientCheckId && input.userId ? await Check.findOne({ clientId: input.clientCheckId, user: input.userId }).sort({ createdAt: -1 }) : null;
 
   const report = await Report.create({
     user: input.userId ? oid(input.userId) : undefined,

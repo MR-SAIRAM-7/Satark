@@ -25,5 +25,8 @@ jobs:
         run: npm run typecheck
       - name: Test (shared engine + API)
         run: npm test --workspace shared --workspace backend
+        env:
+          # Complaint Kit PDFs: the runner's Google Chrome (chromium-browser is a snap stub on Ubuntu).
+          CHROME_PATH: /usr/bin/google-chrome
       - name: Build the police dashboard
         run: npm run build --workspace dashboard

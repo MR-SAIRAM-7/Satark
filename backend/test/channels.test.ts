@@ -5,6 +5,7 @@ import { io as connect } from 'socket.io-client';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { GuardianLink, Ioc, Message } from '../src/db/models';
+import { indicatorHash } from '../src/lib/crypto';
 import { attachRealtime, closeRealtime } from '../src/services/realtime';
 import { api, app, bearer, DIGITAL_ARREST, signIn, useDatabase } from './helpers';
 
@@ -90,13 +91,20 @@ describe('Home Guardian live call (F10)', () => {
     ];
     let last;
     for (const text of lines) {
-      last = await api().post('/v1/listen/text').set(bearer(listener.body.token)).send({ session_id: 'call-test-1', text }).expect(200);
+      last = await api()
+        .post('/v1/listen/text')
+        .set(bearer(listener.body.token))
+        .send({ session_id: 'call-test-1', text, caller: '+91 90000 54321' })
+        .expect(200);
     }
     expect(last!.body.cut).toBe(true);
     const signal = await cut;
     expect(signal.stage).toBeGreaterThanOrEqual(4);
     expect(signal.score).toBeGreaterThanOrEqual(85);
     expect(signal.countdown).toBe(10);
+    // The Home Guardian's caller number is reported, so every phone blocks it.
+    const blocked = await Ioc.findOne({ type: 'phone', hash: indicatorHash({ type: 'phone', value: '+919000054321' }) }).lean();
+    expect(blocked?.reportCount).toBeGreaterThan(0);
     socket.close();
   });
 });

@@ -189,7 +189,8 @@ export async function analyzeMessage(req: AnalyzeRequest, opts: AnalyzeOptions =
     latencyMs,
   });
 
-  if (response.verdict !== 'safe') {
+  // An officer testing a message in the dashboard's analyzer is not a scam in the city: keep it off the feed.
+  if (response.verdict !== 'safe' && opts.channel !== 'dashboard') {
     const label = SCAM_TYPES[response.scam_type].label.en;
     await publish({
       type: 'check',

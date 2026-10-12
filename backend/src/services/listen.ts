@@ -4,12 +4,23 @@
  * 60-second window; at stage 4+ and score 85+ the elder's phone gets the
  * "CUT" signal and starts the 10-second countdown. Audio is never stored.
  */
-import { analyzeLocal, maskPhone, SCAM_TYPES, shouldCutCall, type Evidence, type Stage } from '@satark/shared';
+import {
+  analyzeLocal,
+  maskPhone,
+  normalizeIndianMobile,
+  parseSender,
+  SCAM_TYPES,
+  shouldCutCall,
+  type Evidence,
+  type ScamType,
+  type Stage,
+} from '@satark/shared';
 import { LRUCache } from 'lru-cache';
 
 import { GuardianLink, User } from '../db/models';
 import type { AuthUser } from '../middleware/auth';
 import { raiseAlert } from './alerts';
+import { reportIndicators, toReported } from './intel';
 import { emitToUser, publish } from './realtime';
 
 const WINDOW_MS = 60_000;
@@ -21,6 +32,8 @@ interface Line {
 }
 
 export interface ListenState {
+  /** The account (Home Guardian phone) that started the session. */
+  owner?: string;
   lines: Line[];
   evidence: Evidence[];
   stage: Stage;
@@ -32,7 +45,7 @@ export interface ListenState {
 const sessions = new LRUCache<string, ListenState>({ max: 2000, ttl: 2 * 60 * 60 * 1000 });
 
 export async function addLine(sessionId: string, text: string, listener?: AuthUser, caller?: string): Promise<ListenState> {
-  const state = sessions.get(sessionId) ?? { lines: [], evidence: [], stage: 0, score: 0, cut: false, scamType: 'unknown' };
+  const state = sessions.get(sessionId) ?? { owner: listener?.id, lines: [], evidence: [], stage: 0, score: 0, cut: false, scamType: 'unknown' };
   const clean = text.trim();
   if (!clean) return state;
 
@@ -43,6 +56,7 @@ export async function addLine(sessionId: string, text: string, listener?: AuthUs
   const analysis = analyzeLocal({ text: window.map((l) => l.text).join('. '), source: 'transcript', sender: caller, context: { onCall: true } });
 
   const next: ListenState = {
+    owner: state.owner,
     lines,
     evidence: analysis.evidence,
     stage: analysis.stage,
@@ -58,9 +72,11 @@ export async function addLine(sessionId: string, text: string, listener?: AuthUs
 
 /** Tell the elder's phone to start the countdown, alert the family and the cyber cell. */
 async function signalCut(sessionId: string, state: ListenState, listener?: AuthUser, caller?: string) {
-  const links = listener ? await GuardianLink.find({ guardian: listener.id }).lean() : [];
-  const elders = await User.find({ _id: { $in: links.map((l) => l.elder) } }).lean();
-  const payload = { sessionId, stage: state.stage, score: state.score, countdown: 10, evidence: state.evidence };
+  // The elders this Home Guardian phone protects; an elder listening on their own phone protects themselves.
+  const links = listener && listener.role !== 'elder' ? await GuardianLink.find({ guardian: listener.id }).lean() : [];
+  const ids = listener?.role === 'elder' ? [listener.id] : links.map((l) => l.elder);
+  const elders = await User.find({ _id: { $in: ids } }).lean();
+  const payload = { sessionId, stage: state.stage, score: state.score, countdown: 10, evidence: state.evidence, caller: caller ? maskPhone(caller) : null };
   for (const elder of elders) emitToUser(elder._id, 'cut', payload);
 
   const label = SCAM_TYPES[state.scamType as keyof typeof SCAM_TYPES]?.label.en ?? 'Scam call';
@@ -75,6 +91,18 @@ async function signalCut(sessionId: string, state: ListenState, listener?: AuthU
     scamType: state.scamType,
     locality: elder?.locality,
   });
+  // The Home Guardian phone heard the real number: report it, so every Satark phone blocks it before it rings.
+  const number = caller ? (normalizeIndianMobile(caller) ?? parseSender(caller).e164) : undefined;
+  if (number && listener) {
+    await reportIndicators({
+      reporter: listener.id,
+      userId: listener.id,
+      indicators: [toReported({ type: 'phone', value: number })],
+      scamType: state.scamType as ScamType,
+      locality: elder?.locality,
+      channel: 'listener',
+    });
+  }
   await publish({
     type: 'call',
     severity: 'critical',
