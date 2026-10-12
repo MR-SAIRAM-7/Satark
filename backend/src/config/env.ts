@@ -73,6 +73,8 @@ const schema = z.object({
 // A blank line in .env ("JWT_SECRET=") means "not set", so a file copied straight from
 // .env.example starts in demo mode instead of failing validation on empty secrets.
 const provided = Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== ''));
+// On Render the service's public address is known to the platform, so it never has to be typed in.
+provided.PUBLIC_BASE_URL ??= provided.RENDER_EXTERNAL_URL;
 const parsed = schema.safeParse(provided);
 if (!parsed.success) {
   console.error('Invalid configuration:', z.prettifyError(parsed.error));
@@ -85,6 +87,12 @@ if (env.NODE_ENV === 'production') {
   const weak = (['JWT_SECRET', 'HASH_SECRET', 'PHONE_ENC_KEY'] as const).filter((k) => env[k] === DEV_SECRET);
   if (weak.length) {
     console.error(`Set ${weak.join(', ')} before running in production.`);
+    process.exit(1);
+  }
+  // The embedded database downloads an 800 MB MongoDB binary and keeps its data on local disk.
+  // A hosted container has neither the memory nor a disk that survives a restart.
+  if (process.env.RENDER && !env.MONGODB_URI) {
+    console.error('Set MONGODB_URI (MongoDB Atlas connection string) in the Render dashboard. See docs/DEPLOY.md.');
     process.exit(1);
   }
 }
@@ -103,3 +111,10 @@ export const features = {
 };
 
 export const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+
+/**
+ * What the CORS middleware and Socket.IO accept. A "*" entry allows any browser
+ * origin (the API authenticates with bearer tokens, not cookies); otherwise only
+ * the listed origins. Native apps send no Origin header and are unaffected.
+ */
+export const corsOrigin: true | string[] = allowedOrigins.includes('*') ? true : allowedOrigins;

@@ -1,0 +1,17 @@
+# Keep secrets, dependencies and build output out of Docker images.
+# (The Dockerfiles copy each workspace's package.json, so those must stay visible.)
+.git
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.render.example
+
+backend/.data
+dashboard/.next
+mobile/android
+mobile/ios
+mobile/.expo
+mobile/dist
+ml/data
+**/*.log

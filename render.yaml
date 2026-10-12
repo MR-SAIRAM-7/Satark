@@ -1,0 +1,66 @@
+# Render Blueprint for the Satark API.
+#   Render dashboard > New > Blueprint > choose this repository.
+# Render builds backend/Dockerfile, generates the three secrets, and asks for
+# one value: MONGODB_URI. Everything else has a working default. Add provider
+# keys afterwards from backend/.env.render.example (see docs/DEPLOY.md).
+services:
+  - type: web
+    name: satark-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    # The API imports the shared workspace, so the build runs from the repository root.
+    dockerContext: .
+    plan: free
+    # Closest Render region to India.
+    region: singapore
+    healthCheckPath: /health
+    autoDeploy: true
+    # Do not rebuild the API when only the app, dashboard or docs change.
+    buildFilter:
+      paths:
+        - backend/**
+        - shared/**
+        - package.json
+        - package-lock.json
+        - render.yaml
+    envVars:
+      # MongoDB Atlas connection string. Required: the embedded database cannot run on Render.
+      - key: MONGODB_URI
+        sync: false
+
+      # Generated once by Render and kept across deploys. PHONE_ENC_KEY and HASH_SECRET
+      # must never change afterwards: stored phone numbers and hashes depend on them.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: HASH_SECRET
+        generateValue: true
+      - key: PHONE_ENC_KEY
+        generateValue: true
+
+      # PUBLIC_BASE_URL is not listed on purpose: the API reads Render's own
+      # RENDER_EXTERNAL_URL, so Twilio webhooks and PDF links use the right address.
+
+      # "*" lets the dashboard call the API from any address. Replace it with the
+      # dashboard's URL once that is deployed.
+      - key: ALLOWED_ORIGINS
+        value: "*"
+
+      # Demo mode: sign-in code is DEMO_OTP, and 1930 / portal actions stay on practice screens.
+      - key: DEMO_MODE
+        value: "true"
+      - key: SEED_ON_START
+        value: "true"
+      - key: LIVE_FEED
+        value: "false"
+      - key: JOBS_ENABLED
+        value: "true"
+      - key: ENRICH_LINKS
+        value: "true"
+      - key: LOG_LEVEL
+        value: info
+
+      # WhatsApp Sandbox sender (the same number for every Twilio account).
+      - key: TWILIO_WHATSAPP_FROM
+        value: "+14155238886"
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash

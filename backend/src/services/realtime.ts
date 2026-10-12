@@ -6,7 +6,7 @@ import type { Server as HttpServer } from 'node:http';
 
 import { Server } from 'socket.io';
 
-import { allowedOrigins } from '../config/env';
+import { corsOrigin } from '../config/env';
 import { FeedEvent, type FeedEventDoc } from '../db/models';
 import { logger } from '../lib/logger';
 import { locate } from '../lib/geo';
@@ -15,7 +15,7 @@ import { verifyToken } from '../middleware/auth';
 let io: Server | null = null;
 
 export function attachRealtime(server: HttpServer): Server {
-  io = new Server(server, { cors: { origin: allowedOrigins }, serveClient: false });
+  io = new Server(server, { cors: { origin: corsOrigin }, serveClient: false });
   io.on('connection', (socket) => {
     const user = verifyToken(socket.handshake.auth?.token as string | undefined);
     if (!user) return;

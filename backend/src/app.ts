@@ -4,7 +4,7 @@ import express, { Router } from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 
-import { allowedOrigins } from './config/env';
+import { corsOrigin } from './config/env';
 import { errorHandler, notFound } from './lib/errors';
 import { logger } from './lib/logger';
 import { globalLimiter } from './middleware/limits';
@@ -22,7 +22,7 @@ export function createApp() {
   app.disable('x-powered-by');
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   // Native apps send no Origin header and are unaffected; browsers are limited to our own front ends.
-  app.use(cors({ origin: allowedOrigins }));
+  app.use(cors({ origin: corsOrigin }));
   app.use(
     pinoHttp({
       logger,
