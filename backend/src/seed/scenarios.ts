@@ -6,6 +6,7 @@ import type { IndicatorType, ScamType } from '@satark/shared';
 
 import { env } from '../config/env';
 import { Alert, User } from '../db/models';
+import { phoneHash } from '../lib/crypto';
 import { escalateUnacknowledged } from '../services/alerts';
 import { analyzeMessage } from '../services/analysis';
 import { clusterCampaigns } from '../services/campaigns';
@@ -13,11 +14,13 @@ import { goldenHourCase } from '../services/complaints';
 import { reportIndicators, toReported } from '../services/intel';
 import { addLine } from '../services/listen';
 import { publish } from '../services/realtime';
+import { DEMO_ELDERS } from './data';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** The storyline's elder, found by her number (the demo phone may have claimed her account). */
 const lakshmi = async () => {
-  const user = await User.findOne({ deviceId: 'demo-elder-lakshmi' });
+  const user = await User.findOne({ phoneHash: phoneHash(DEMO_ELDERS[0]!.phone) });
   if (!user) throw new Error('Demo data missing: reset the demo first');
   return user;
 };

@@ -38,7 +38,7 @@ familyRouter.get('/guardian/elders', requireAuth('guardian', 'listener'), async 
   const result = await Promise.all(
     elders.map(async (e) => {
       const [alerts, drills] = await Promise.all([
-        Alert.find({ elder: e._id }).sort({ createdAt: -1 }).limit(10).lean(),
+        Alert.find({ elder: e._id }).sort({ createdAt: -1 }).limit(10),
         Drill.find({ user: e._id }).sort({ createdAt: -1 }).limit(10).lean(),
       ]);
       return {
@@ -60,8 +60,7 @@ familyRouter.get('/alerts', requireAuth(), async (req, res) => {
   const elderIds = me.role === 'elder' ? [oid(me.id)] : (await GuardianLink.find({ guardian: me.id }).lean()).map((l) => l.elder);
   const alerts = await Alert.find(me.role === 'police' ? {} : { elder: { $in: elderIds } })
     .sort({ createdAt: -1 })
-    .limit(50)
-    .lean();
+    .limit(50);
   res.json({ alerts });
 });
 

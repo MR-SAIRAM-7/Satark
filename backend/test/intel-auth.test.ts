@@ -42,6 +42,19 @@ describe('auth and roles', () => {
   });
 });
 
+describe('demo device linking', () => {
+  it('attaches an install to the seeded person with that number, never to a police account', async () => {
+    const elder = await signIn('+919123400090', { name: 'Seeded Elder' });
+    const linked = await api().post('/v1/auth/device').send({ device_id: 'demo-phone-0001', phone: '+91 91234 00090' }).expect(200);
+    expect(linked.body.user.id).toBe(elder.user.id);
+
+    await User.create({ role: 'police', name: 'Officer', phoneHash: phoneHash('+919000000888') });
+    const other = await api().post('/v1/auth/device').send({ device_id: 'demo-phone-0002', phone: '+919000000888' }).expect(200);
+    expect(other.body.user.role).toBe('elder');
+    expect(other.body.user.id).not.toBe((await User.findOne({ role: 'police', name: 'Officer' }))!.id);
+  });
+});
+
 describe('community intelligence', () => {
   it('confirms an indicator after three independent reporters, counting each once', async () => {
     const first = await report('phone-a').expect(201);

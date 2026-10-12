@@ -115,7 +115,7 @@ complaintsRouter.get('/complaints', requireAuth(), async (req, res) => {
 
 complaintsRouter.get('/complaints/:id', requireAuth(), async (req, res) => {
   const complaint = await loadCase(req);
-  const messages = await Message.find({ complaint: complaint._id }).sort({ createdAt: 1 }).lean();
+  const messages = await Message.find({ complaint: complaint._id }).sort({ createdAt: 1 });
   res.json({ complaint, messages });
 });
 
@@ -147,7 +147,7 @@ complaintsRouter.get('/cases', requireAuth('police'), async (req, res) => {
 
 complaintsRouter.get('/cases/:id', requireAuth('police'), async (req, res) => {
   const complaint = await loadCase(req);
-  const messages = await Message.find({ complaint: complaint._id }).sort({ createdAt: 1 }).lean();
+  const messages = await Message.find({ complaint: complaint._id }).sort({ createdAt: 1 });
   res.json({ complaint, messages });
 });
 

@@ -67,8 +67,7 @@ export const topIndicators = (type?: 'phone' | 'upi' | 'domain', limit = 15) =>
   Ioc.find(type ? { type } : {})
     .sort({ reportCount: -1, lastSeen: -1 })
     .limit(limit)
-    .select('type masked reportCount status scamType firstSeen lastSeen campaign')
-    .lean();
+    .select('type masked reportCount status scamType firstSeen lastSeen campaign');
 
 /** F23 "scam weather": what is rising in the last day, in plain words, in three languages. */
 export async function scamWeather() {

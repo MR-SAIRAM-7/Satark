@@ -30,7 +30,7 @@ policeRouter.get('/dashboard/trends', async (req, res) => {
 });
 
 policeRouter.get('/dashboard/campaigns', async (_req, res) => {
-  res.json({ campaigns: await Campaign.find({ active: true }).sort({ reportCount: -1 }).limit(30).lean() });
+  res.json({ campaigns: await Campaign.find({ active: true }).sort({ reportCount: -1 }).limit(30) });
 });
 
 policeRouter.get('/dashboard/indicators', async (req, res) => {
@@ -39,15 +39,15 @@ policeRouter.get('/dashboard/indicators', async (req, res) => {
 });
 
 policeRouter.get('/dashboard/feed', async (req, res) => {
-  res.json({ events: await FeedEvent.find().sort({ createdAt: -1 }).limit(limit(60).parse(req.query).limit).lean() });
+  res.json({ events: await FeedEvent.find().sort({ createdAt: -1 }).limit(limit(60).parse(req.query).limit) });
 });
 
 policeRouter.get('/dashboard/outbox', async (req, res) => {
-  res.json({ messages: await Message.find().sort({ createdAt: -1 }).limit(limit(80).parse(req.query).limit).lean() });
+  res.json({ messages: await Message.find().sort({ createdAt: -1 }).limit(limit(80).parse(req.query).limit) });
 });
 
 policeRouter.get('/dashboard/alerts', async (_req, res) => {
-  res.json({ alerts: await Alert.find({ severity: { $ne: 'info' } }).sort({ createdAt: -1 }).limit(40).lean() });
+  res.json({ alerts: await Alert.find({ severity: { $ne: 'info' } }).sort({ createdAt: -1 }).limit(40) });
 });
 
 policeRouter.get('/dashboard/weather', async (_req, res) => {
@@ -70,7 +70,7 @@ policeRouter.get('/domains/hunt', async (req, res) => {
 policeRouter.get('/iocs/lookup', async (req, res) => {
   const { type, value } = z.object({ type: z.enum(['phone', 'upi', 'domain']), value: z.string().min(3).max(200) }).parse(req.query);
   const normalized = type === 'phone' ? `+91${value.replace(/\D/g, '').slice(-10)}` : value.trim().toLowerCase();
-  const ioc = await Ioc.findOne({ type, hash: indicatorHash({ type, value: normalized }) }).lean();
+  const ioc = await Ioc.findOne({ type, hash: indicatorHash({ type, value: normalized }) });
   res.json({ found: Boolean(ioc), ioc });
 });
 

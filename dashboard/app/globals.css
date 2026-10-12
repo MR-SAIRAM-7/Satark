@@ -1,0 +1,122 @@
+@import 'tailwindcss';
+
+/*
+ * Control-room theme. Chart colours follow the dataviz reference palette's
+ * dark steps (validated against the panel surface); status colours are
+ * reserved for severity and always ship with an icon and a label.
+ */
+@theme {
+  --color-page: #121211;
+  --color-panel: #1a1a19;
+  --color-raised: #232321;
+  --color-line: #2f2f2c;
+  --color-ink: #ffffff;
+  --color-ink-2: #c3c2b7;
+  --color-ink-3: #8f8e86;
+  --color-accent: #3987e5;
+  --color-accent-strong: #256abf;
+
+  --color-critical: #d03b3b;
+  --color-serious: #ec835a;
+  --color-warning: #fab219;
+  --color-good: #0ca30c;
+
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Noto Sans', 'Noto Sans Telugu', 'Nirmala UI', sans-serif;
+  --font-mono: 'Cascadia Code', 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html,
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Live events pulse on the map; critical ones in the status colour. */
+.pulse {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+.pulse::before,
+.pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: var(--pulse-color, #fab219);
+}
+.pulse::after {
+  animation: pulse-ring 1.6s ease-out infinite;
+}
+@keyframes pulse-ring {
+  from {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+@keyframes alarm-flash {
+  0%,
+  100% {
+    background-color: rgb(208 59 59 / 0.92);
+  }
+  50% {
+    background-color: rgb(140 30 30 / 0.95);
+  }
+}
+.alarm-flash {
+  animation: alarm-flash 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse::after,
+  .alarm-flash {
+    animation: none;
+  }
+}
+
+/* Leaflet on the dark theme. */
+.leaflet-container {
+  background: #0e0e0d;
+  font-family: var(--font-sans);
+}
+.leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.85) saturate(0.4);
+}
+.leaflet-tooltip {
+  background: var(--color-raised);
+  color: var(--color-ink);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  padding: 8px 10px;
+}
+.leaflet-tooltip-top::before {
+  border-top-color: var(--color-line);
+}
+.leaflet-control-attribution {
+  background: rgb(18 18 17 / 0.7) !important;
+  color: var(--color-ink-3) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--color-ink-2) !important;
+}

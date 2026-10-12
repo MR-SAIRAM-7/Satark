@@ -49,7 +49,7 @@ describe('Home Guardian live call (F10)', () => {
     await GuardianLink.create({ elder: elder.user.id, guardian: listener.body.user.id, relation: 'home guardian phone' });
 
     const socket = connect(url, { auth: { token: elder.token }, transports: ['websocket'] });
-    await new Promise((resolve) => socket.on('connect', resolve));
+    await new Promise<void>((resolve) => socket.on('connect', () => resolve()));
     const cut = new Promise<{ stage: number; score: number; countdown: number }>((resolve) => socket.on('cut', resolve));
 
     const lines = [

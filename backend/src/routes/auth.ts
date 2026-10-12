@@ -93,6 +93,19 @@ authRouter.post('/device', authLimiter, async (req, res) => {
     ...(body.locality ? { locality: body.locality } : {}),
     ...(body.phone ? { phoneEnc: encrypt(normalizePhone(body.phone)), phoneMasked: maskPhone(body.phone) } : {}),
   };
+  // Demo continuity: an install onboarded with a seeded person's number becomes that person, so the
+  // pitch's phone and dashboard tell one story. Outside demo mode a phone number is only ever claimed by OTP.
+  if (env.DEMO_MODE && body.phone) {
+    const known = await User.findOne({ phoneHash: phoneHash(normalizePhone(body.phone)), role: { $ne: 'police' } });
+    if (known) {
+      await User.updateMany({ deviceId: body.device_id, _id: { $ne: known._id } }, { $unset: { deviceId: 1 } });
+      known.deviceId = body.device_id;
+      if (body.push_token && !known.pushTokens.includes(body.push_token)) known.pushTokens.push(body.push_token);
+      await known.save();
+      res.json(session(known));
+      return;
+    }
+  }
   const user = await User.findOneAndUpdate(
     { deviceId: body.device_id },
     { $set: update, ...(body.push_token ? { $addToSet: { pushTokens: body.push_token } } : {}) },

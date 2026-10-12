@@ -42,7 +42,8 @@ async function notifyGuardians(alert: AlertDoc, elderName: string, reminder = fa
       purpose: alert.kind,
       alert: alert._id,
     });
-    if (alert.severity === 'critical') {
+    // WhatsApp goes to family members; a Home Guardian phone gets the in-app and push alert only.
+    if (alert.severity === 'critical' && guardian.role === 'guardian') {
       await sendWhatsApp(
         guardian.phoneEnc,
         `${prefix}Satark alert for ${elderName || 'your family member'}: ${alert.title}. ${alert.summary} Please call them now. Reply in the Satark app to acknowledge.`,

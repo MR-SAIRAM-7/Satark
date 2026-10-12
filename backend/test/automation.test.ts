@@ -38,6 +38,12 @@ describe('seeded demo and the police dashboard', () => {
     for (const path of ['campaigns', 'indicators', 'feed', 'outbox', 'alerts', 'weather']) {
       await api().get(`/v1/dashboard/${path}`).set(auth).expect(200);
     }
+    // Every list item carries an `id` (the dashboard keys and de-duplicates on it).
+    const feed = await api().get('/v1/dashboard/feed').set(auth).expect(200);
+    expect(feed.body.events.length).toBeGreaterThan(5);
+    expect(new Set(feed.body.events.map((e: { id: string }) => e.id)).size).toBe(feed.body.events.length);
+    const indicators = await api().get('/v1/dashboard/indicators').set(auth).expect(200);
+    expect(indicators.body.indicators[0].id).toBeDefined();
     const weather = await api().get('/v1/dashboard/weather').set(auth).expect(200);
     expect(weather.body.text.te).toMatch(/[ఀ-౿]/);
   });
