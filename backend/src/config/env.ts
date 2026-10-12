@@ -86,7 +86,9 @@ const schema = z.object({
 // .env.example starts in demo mode instead of failing validation on empty secrets.
 const provided = Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== ''));
 // On Render the service's public address is known to the platform, so it never has to be typed in.
-provided.PUBLIC_BASE_URL ??= provided.RENDER_EXTERNAL_URL;
+// A localhost address copied from a laptop's .env would break PDF links and Twilio signatures there: the real one wins.
+const onThisMachine = (url: string | undefined) => !url || /^https?:\/\/(localhost|127\.|0\.0\.0\.0|\[::1\])/i.test(url);
+if (provided.RENDER_EXTERNAL_URL && onThisMachine(provided.PUBLIC_BASE_URL)) provided.PUBLIC_BASE_URL = provided.RENDER_EXTERNAL_URL;
 const parsed = schema.safeParse(provided);
 if (!parsed.success) fatal(`Invalid configuration (check these environment variables):\n${z.prettifyError(parsed.error)}`);
 

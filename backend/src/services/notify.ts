@@ -16,10 +16,19 @@ import { Message } from '../db/models';
 import { decrypt, normalizePhone } from '../lib/crypto';
 import { logger } from '../lib/logger';
 import { explainTwilioError, isPublicUrl, paced, twilioClient, webhooks, whatsappFrom } from '../lib/twilio';
+import { DEMO_ELDERS, DEMO_POLICE } from '../seed/data';
 import { emitToPolice } from './realtime';
 
 export { twilioClient };
 const expo = new Expo({ accessToken: env.EXPO_ACCESS_TOKEN });
+
+/**
+ * The seeded demo people's numbers are invented, and an invented number may
+ * still belong to a stranger. Messages to them are recorded, never sent.
+ */
+const SEEDED_NUMBERS = new Set(
+  [...DEMO_POLICE.map((p) => p.phone), ...DEMO_ELDERS.flatMap((e) => [e.phone, e.guardian?.phone])].filter((p): p is string => Boolean(p)),
+);
 
 /** What `sendWhatsApp` reports back. "delivered" and "read" arrive later, on the status webhook. */
 export type DeliveryStatus = 'sent' | 'demo' | 'failed' | 'skipped';
@@ -52,6 +61,10 @@ export async function sendWhatsApp(
   if (!number || number.length < 9) {
     await record('whatsapp', toMasked, body, 'skipped', rest, { mediaUrl });
     return 'skipped';
+  }
+  if (SEEDED_NUMBERS.has(number)) {
+    await record('whatsapp', toMasked, body, 'demo', rest, { mediaUrl, error: 'Seeded demo person (invented number): recorded, not sent.' });
+    return 'demo';
   }
   const client = twilioClient;
   if (!features.whatsapp || !client) {

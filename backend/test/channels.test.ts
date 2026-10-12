@@ -6,6 +6,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { GuardianLink, Ioc, Message } from '../src/db/models';
 import { indicatorHash } from '../src/lib/crypto';
+import { sendWhatsApp } from '../src/services/notify';
 import { attachRealtime, closeRealtime } from '../src/services/realtime';
 import { api, app, bearer, DIGITAL_ARREST, signIn, useDatabase } from './helpers';
 
@@ -106,5 +107,14 @@ describe('Home Guardian live call (F10)', () => {
     const blocked = await Ioc.findOne({ type: 'phone', hash: indicatorHash({ type: 'phone', value: '+919000054321' }) }).lean();
     expect(blocked?.reportCount).toBeGreaterThan(0);
     socket.close();
+  });
+});
+
+describe('outbound WhatsApp', () => {
+  it('records messages to the invented demo numbers without sending them', async () => {
+    expect(await sendWhatsApp('+91 90000 00101', 'Golden hour reminder', { purpose: 'test_seeded' })).toBe('demo');
+    const message = await Message.findOne({ purpose: 'test_seeded' }).lean();
+    expect(message).toMatchObject({ status: 'demo', toMasked: '+9190XXXXXX01' });
+    expect(message?.error).toMatch(/not sent/);
   });
 });
