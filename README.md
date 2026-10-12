@@ -6,13 +6,6 @@
 
 Satark (సతర్క్ / सतर्क, "alert") is an Android app that stops cyber fraud against senior citizens **while the scam is happening**. It reads incoming SMS and WhatsApp messages, checks links and UPI requests, and watches live calls. When it spots a scam, it warns the elder **by voice in Telugu, Hindi or English**, alerts their family on the spot, can end a scam call after a 10-second countdown, and builds a complete police complaint kit, delivered on **WhatsApp**, within the golden hour.
 
-![Platform](https://img.shields.io/badge/platform-Android%2010%2B-3DDC84?logo=android&logoColor=white)
-![Flutter](https://img.shields.io/badge/app-Flutter%20%2B%20Kotlin-02569B?logo=flutter&logoColor=white)
-![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688?logo=fastapi&logoColor=white)
-![Supabase](https://img.shields.io/badge/data-Supabase-3FCF8E?logo=supabase&logoColor=white)
-![Sarvam AI](https://img.shields.io/badge/multilingual-Sarvam%20AI-FF6B00)
-![WhatsApp](https://img.shields.io/badge/delivery-WhatsApp%20Cloud%20API-25D366?logo=whatsapp&logoColor=white)
-![Languages](https://img.shields.io/badge/languages-Telugu%20%7C%20Hindi%20%7C%20English-blueviolet)
 
 **KPRIT Software Hackathon 2026** · 12 Oct 11:00 AM to 13 Oct 11:00 AM
 **Track:** Open Innovation (#200), combining **#127** Fraud message detector, **#164** Spam call detector, **#161** Phishing URL detector and **#144** Transaction anomaly alerts
