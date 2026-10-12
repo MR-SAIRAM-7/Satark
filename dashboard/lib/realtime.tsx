@@ -10,7 +10,7 @@ import { io } from 'socket.io-client';
 import { toast } from 'sonner';
 import { mutate } from 'swr';
 
-import { session, SOCKET_URL } from './api';
+import { api, session, SOCKET_URL } from './api';
 import { siren, soundReady, unlock } from './alarm';
 import type { FeedEvent } from './types';
 
@@ -70,7 +70,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         setAlarms((prev) => [event, ...prev].slice(0, 20));
         if (!mutedRef.current) siren();
         toast.error(event.title, { description: event.detail, duration: 10_000 });
-      } else if (event.type === 'case' || event.type === 'ioc') {
+      } else if ((event.type === 'case' || event.type === 'ioc') && event.severity === 'warning') {
         toast(event.title, { description: event.detail });
       }
     });
@@ -89,7 +89,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       connected,
       live,
       alarms,
-      acknowledgeAlarms: () => setAlarms([]),
+      acknowledgeAlarms: () => {
+        // Acknowledging an alert here also acknowledges it on the server, which stops its escalation.
+        const alertIds = new Set(alarms.filter((a) => (a.type === 'alert' || a.type === 'escalation') && a.ref).map((a) => a.ref!));
+        alertIds.forEach((id) => void api(`/alerts/${id}/ack`, { method: 'POST' }).catch(() => undefined));
+        setAlarms([]);
+      },
       muted,
       setMuted: (next) => {
         mutedRef.current = next;
