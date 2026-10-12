@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
@@ -11,12 +11,14 @@ import { Screen } from '@/components/ui/Screen';
 import { SAMPLES } from '@/data/samples';
 import { processIncoming } from '@/features/detection/pipeline';
 import { useLocalized, useT } from '@/i18n';
-import { colors, spacing } from '@/theme/tokens';
+import { makeStyles, spacing, useTheme } from '@/theme/tokens';
 
 /** "Is this safe?" (F1, F7): paste, share or scan anything and get a verdict. */
 export default function CheckScreen() {
   const t = useT();
   const localized = useLocalized();
+  const styles = useStyles();
+  const { c } = useTheme();
   const params = useLocalSearchParams<{ shared?: string; qr?: string }>();
 
   const [text, setText] = useState(params.shared ?? params.qr ?? '');
@@ -28,10 +30,7 @@ export default function CheckScreen() {
     if (!input.trim() || busy) return;
     setBusy(true);
     try {
-      const check = await processIncoming(
-        { source, text: input, sender: from.trim() || null },
-        { userInitiated: true, context: { expectingToReceive } },
-      );
+      const check = await processIncoming({ source, text: input, sender: from.trim() || null }, { userInitiated: true, context: { expectingToReceive } });
       if (check) router.replace({ pathname: '/verdict/[id]', params: { id: check.id } });
     } finally {
       setBusy(false);
@@ -68,28 +67,15 @@ export default function CheckScreen() {
           onPress={() => run(text, sender, 'paste')}
         />
       }>
-      <Field
-        testID="check-input"
-        value={text}
-        onChangeText={setText}
-        placeholder={t('check.placeholder')}
-        multiline
-        autoFocus={!params.shared && !params.qr}
-      />
+      <Field testID="check-input" value={text} onChangeText={setText} placeholder={t('check.placeholder')} multiline autoFocus={!params.shared && !params.qr} />
 
       <View style={styles.actions}>
-        <Chip label={t('check.paste')} icon="clipboard" onPress={paste} />
-        <Chip label={t('check.scan')} icon="qr-code" onPress={() => router.push('/scan')} />
+        <Chip label={t('check.paste')} icon="clipboard-outline" onPress={paste} />
+        <Chip label={t('check.scan')} icon="qr-code-outline" onPress={() => router.push('/scan')} />
         {text ? <Chip label={t('check.clear')} icon="close" onPress={() => setText('')} /> : null}
       </View>
 
-      <Field
-        label={t('check.sender')}
-        value={sender}
-        onChangeText={setSender}
-        placeholder={t('check.sender.placeholder')}
-        autoCapitalize="none"
-      />
+      <Field label={t('check.sender')} value={sender} onChangeText={setSender} placeholder={t('check.sender.placeholder')} autoCapitalize="none" icon="person-outline" />
 
       <Card style={styles.expecting}>
         <AppText variant="body" style={styles.flex}>
@@ -99,7 +85,8 @@ export default function CheckScreen() {
       </Card>
 
       <SectionHeader title={t('check.examples')} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.examples}>
+      {/* flexGrow 0: a horizontal list must not stretch to fill the screen's height. */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.examplesScroll} contentContainerStyle={styles.examples}>
         {SAMPLES.map((sample) => (
           <Chip
             key={sample.id}
@@ -112,16 +99,17 @@ export default function CheckScreen() {
           />
         ))}
       </ScrollView>
-      <AppText variant="caption" color={colors.textFaint}>
+      <AppText variant="caption" color={c.textFaint}>
         {t('settings.privacy.body')}
       </AppText>
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   flex: { flex: 1 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   expecting: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  examples: { gap: spacing.sm, paddingVertical: 2 },
-});
+  examplesScroll: { flexGrow: 0 },
+  examples: { gap: spacing.sm, paddingVertical: 2, alignItems: 'center' },
+}));

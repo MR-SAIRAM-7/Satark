@@ -1,93 +1,125 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AppText } from '@/components/ui/AppText';
-import { Button } from '@/components/ui/Button';
+import { Glow } from '@/components/ui/Glow';
+import { Button, IconButton, tapFeedback } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { ListRow, SectionHeader } from '@/components/ui/primitives';
+import { ListRow, Ring, SectionHeader } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { useT, type StringKey } from '@/i18n';
 import { speak } from '@/services/voice';
 import { readinessScore, useDrills } from '@/store/activity';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
 
-const RULES: StringKey[] = ['learn.rule.1', 'learn.rule.2', 'learn.rule.3', 'learn.rule.4', 'learn.rule.5'];
+const RULES: { key: StringKey; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'learn.rule.1', icon: 'videocam-off' },
+  { key: 'learn.rule.2', icon: 'keypad' },
+  { key: 'learn.rule.3', icon: 'qr-code' },
+  { key: 'learn.rule.4', icon: 'call' },
+  { key: 'learn.rule.5', icon: 'people' },
+];
 
 /** Prevention: practise on safe examples, know the rules, know who to call. */
 export default function LearnTab() {
   const t = useT();
+  const styles = useStyles();
+  const { c, shadow } = useTheme();
   const readiness = readinessScore(useDrills((s) => s.results));
 
   return (
-    <Screen inTabs title={t('learn.title')}>
-      <Card style={styles.drill}>
-        <View style={styles.drillTop}>
-          <View style={styles.flex}>
-            <AppText variant="heading">{t('learn.drills')}</AppText>
-            <AppText variant="label" color={colors.textMuted}>
-              {t('learn.drills.sub')}
-            </AppText>
-          </View>
-          {readiness !== null ? (
-            <View style={styles.score}>
-              <AppText variant="heading" color={colors.safeDeep}>
-                {readiness}%
-              </AppText>
+    <Screen inTabs title={t('learn.title')} subtitle={t('learn.sub')}>
+      <Animated.View entering={FadeInDown.duration(360)}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('learn.drills')}
+          onPress={() => {
+            tapFeedback();
+            router.push('/drill');
+          }}
+          style={({ pressed }) => [styles.heroWrap, shadow.raised, pressed && styles.pressed]}>
+          <LinearGradient colors={c.ink} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+            <Glow color="#3BE39A" size={300} opacity={0.26} style={styles.glow} />
+            <View style={styles.heroTop}>
+              <Ring size={88} stroke={8} progress={(readiness ?? 0) / 100} color="#3BE39A" track="rgba(255,255,255,0.12)">
+                <AppText variant="heading" color="#FFFFFF">
+                  {readiness === null ? '–' : `${readiness}%`}
+                </AppText>
+              </Ring>
+              <View style={styles.flex}>
+                <AppText variant="overline" color="rgba(255,255,255,0.7)">
+                  {t('guardian.readiness')}
+                </AppText>
+                <AppText variant="title" color="#FFFFFF">
+                  {t('learn.drills')}
+                </AppText>
+                <AppText variant="label" color="rgba(255,255,255,0.74)">
+                  {t('learn.drills.sub')}
+                </AppText>
+              </View>
             </View>
-          ) : null}
-        </View>
-        <Button label={t('learn.drills')} icon="play-circle" size="lg" onPress={() => router.push('/drill')} />
-      </Card>
+            <Button label={readiness === null ? t('learn.start') : t('drill.again')} icon="play" variant="onDark" size="lg" onPress={() => router.push('/drill')} />
+          </LinearGradient>
+        </Pressable>
+      </Animated.View>
 
       <Card padded={false}>
         <ListRow
           icon="call"
           title={t('learn.directory')}
           subtitle={t('learn.directory.sub')}
-          tone={{ color: colors.safe, soft: colors.safeSoft }}
+          tone={{ color: c.safeText, soft: c.safeSoft }}
           onPress={() => router.push('/directory')}
         />
-        <ListRow
-          icon="radio"
-          title={t('learn.radar')}
-          subtitle={t('learn.radar.sub')}
-          tone={{ color: colors.danger, soft: colors.dangerSoft }}
-          onPress={() => router.push('/insights')}
-          last
-        />
+        <ListRow icon="radio" title={t('learn.radar')} subtitle={t('learn.radar.sub')} tone={{ color: c.dangerText, soft: c.dangerSoft }} onPress={() => router.push('/insights')} last />
       </Card>
 
-      <SectionHeader title={t('learn.rules')} />
-      <Card style={styles.rules}>
-        {RULES.map((key, index) => (
-          <View key={key} style={styles.rule}>
-            <View style={styles.ruleNumber}>
-              <AppText variant="bodyStrong" color={colors.textOnDark}>
-                {index + 1}
-              </AppText>
+      <View style={styles.rulesHeader}>
+        <View style={styles.flex}>
+          <SectionHeader title={t('learn.rules')} />
+        </View>
+        <IconButton icon="volume-high" label={t('verdict.listen')} variant="tonal" size={42} onPress={() => speak(RULES.map((r) => t(r.key)).join(' '), { force: true })} />
+      </View>
+      <View style={styles.rules}>
+        {RULES.map((rule, index) => (
+          <Animated.View key={rule.key} entering={FadeInDown.delay(80 + index * 50).duration(320)} style={styles.rule}>
+            <View style={styles.ruleIcon}>
+              <Ionicons name={rule.icon} size={20} color={c.accentText} />
             </View>
-            <AppText variant="body" style={styles.flex}>
-              {t(key)}
-            </AppText>
-          </View>
+            <View style={styles.flex}>
+              <AppText variant="overline" color={c.textFaint}>
+                {t('learn.ruleN', { n: index + 1 })}
+              </AppText>
+              <AppText variant="bodyStrong">{t(rule.key)}</AppText>
+            </View>
+          </Animated.View>
         ))}
-        <Button
-          label={t('verdict.listen')}
-          icon="volume-high"
-          variant="secondary"
-          onPress={() => speak(RULES.map((key) => t(key)).join(' '), { force: true })}
-        />
-      </Card>
+      </View>
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ c }) => ({
   flex: { flex: 1 },
-  drill: { gap: spacing.lg },
-  drillTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  score: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: colors.safeSoft },
-  rules: { gap: spacing.lg },
-  rule: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  ruleNumber: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-});
+  pressed: { transform: [{ scale: 0.985 }] },
+  heroWrap: { borderRadius: radius.xxl },
+  hero: { borderRadius: radius.xxl, padding: spacing.xl, gap: spacing.xl, overflow: 'hidden' },
+  glow: { right: -100, top: -120 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  rulesHeader: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md },
+  rules: { gap: spacing.sm + 2 },
+  rule: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.border,
+  },
+  ruleIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' },
+}));

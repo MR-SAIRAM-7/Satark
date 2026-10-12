@@ -1,18 +1,17 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { isTranslatedBySarvam, LANGUAGES, type LangCode } from '@satark/shared';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { ensureLanguagePack } from '@/services/translation';
 import { speak } from '@/services/voice';
 import { useLangPacks } from '@/store/langPacks';
 import { useSettings } from '@/store/settings';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
 
 import { AppText } from './ui/AppText';
-import { Card } from './ui/Card';
-import { Chip } from './ui/primitives';
+import { tapFeedback } from './ui/Button';
 
 /** Sample line spoken when a language is picked, so the user hears it before choosing. */
 const HELLO: Record<LangCode, string> = {
@@ -35,62 +34,71 @@ const HELLO: Record<LangCode, string> = {
  */
 export function LanguagePicker({ speakOnSelect = true }: { speakOnSelect?: boolean }) {
   const t = useT();
+  const styles = useStyles();
+  const { c } = useTheme();
   const lang = useSettings((s) => s.lang);
   const update = useSettings((s) => s.update);
   const status = useLangPacks((s) => s.status[lang]);
   const [showAll, setShowAll] = useState(() => isTranslatedBySarvam(lang));
 
   const choose = (code: LangCode) => {
+    tapFeedback();
     update({ lang: code });
     ensureLanguagePack(code);
-    if (speakOnSelect) speak(HELLO[code], { lang: code, force: true });
+    if (speakOnSelect) void speak(HELLO[code], { lang: code, force: true });
   };
 
   const main = LANGUAGES.filter((l) => l.ui);
   const more = LANGUAGES.filter((l) => !l.ui);
+  const shown = showAll ? [...main, ...more] : main;
 
   return (
     <View style={styles.root}>
-      {main.map((l) => (
-        <Card
-          key={l.code}
-          onPress={() => choose(l.code)}
-          tone={lang === l.code ? { main: colors.brandBright, soft: colors.brandSoft } : undefined}
-          accessibilityLabel={l.english}
-          style={styles.option}>
-          <AppText variant="title" color={lang === l.code ? colors.brand : colors.text}>
-            {l.native}
-          </AppText>
-          {l.native === l.english ? null : (
-            <AppText variant="label" color={colors.textMuted}>
-              {l.english}
-            </AppText>
-          )}
-        </Card>
-      ))}
+      <View style={styles.grid}>
+        {shown.map((l) => {
+          const selected = lang === l.code;
+          return (
+            <Pressable
+              key={l.code}
+              testID={`lang-${l.code}`}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              accessibilityLabel={l.english}
+              onPress={() => choose(l.code)}
+              style={({ pressed }) => [styles.option, l.ui && styles.optionMain, selected && styles.optionOn, pressed && styles.pressed]}>
+              <View style={styles.flex}>
+                <AppText variant={l.ui ? 'heading' : 'bodyStrong'} color={selected ? c.accentText : c.text} numberOfLines={1}>
+                  {l.native}
+                </AppText>
+                {l.native === l.english ? null : (
+                  <AppText variant="caption" color={c.textMuted}>
+                    {l.english}
+                  </AppText>
+                )}
+              </View>
+              <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={selected ? c.accentText : c.borderStrong} />
+            </Pressable>
+          );
+        })}
+      </View>
 
-      {showAll ? (
-        <View style={styles.chips}>
-          {more.map((l) => (
-            <Chip key={l.code} label={l.native} selected={lang === l.code} onPress={() => choose(l.code)} />
-          ))}
-        </View>
-      ) : (
-        <Chip label={t('onb.lang.more')} icon="globe-outline" onPress={() => setShowAll(true)} />
+      {showAll ? null : (
+        <Pressable accessibilityRole="button" onPress={() => setShowAll(true)} style={styles.more}>
+          <Ionicons name="globe-outline" size={18} color={c.accentText} />
+          <AppText variant="label" color={c.accentText}>
+            {t('onb.lang.more')}
+          </AppText>
+        </Pressable>
       )}
 
       {isTranslatedBySarvam(lang) ? (
         <View style={styles.status} accessibilityLiveRegion="polite">
           {status === 'loading' ? (
-            <ActivityIndicator size="small" color={colors.brandBright} />
+            <ActivityIndicator size="small" color={c.accentText} />
           ) : (
-            <Ionicons
-              name={status === 'unavailable' ? 'cloud-offline' : 'sparkles'}
-              size={18}
-              color={status === 'unavailable' ? colors.warn : colors.brandBright}
-            />
+            <Ionicons name={status === 'unavailable' ? 'cloud-offline' : 'sparkles'} size={18} color={status === 'unavailable' ? c.warnText : c.accentText} />
           )}
-          <AppText variant="caption" color={status === 'unavailable' ? colors.warnDeep : colors.brand} style={styles.statusText}>
+          <AppText variant="caption" color={status === 'unavailable' ? c.warnText : c.accentText} style={styles.flex}>
             {t(status === 'loading' ? 'lang.translating' : status === 'unavailable' ? 'lang.unavailable' : 'lang.ready')}
           </AppText>
         </View>
@@ -99,10 +107,27 @@ export function LanguagePicker({ speakOnSelect = true }: { speakOnSelect?: boole
   );
 }
 
-const styles = StyleSheet.create({
-  root: { gap: spacing.md, alignItems: 'stretch' },
-  option: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  status: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.brandSoft, borderRadius: radius.sm, padding: spacing.md },
-  statusText: { flex: 1 },
-});
+const useStyles = makeStyles(({ c }) => ({
+  flex: { flex: 1 },
+  root: { gap: spacing.md },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  option: {
+    flexGrow: 1,
+    flexBasis: '46%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 64,
+    borderRadius: radius.lg,
+    backgroundColor: c.surface,
+    borderWidth: 1.5,
+    borderColor: c.border,
+  },
+  optionMain: { flexBasis: '100%', minHeight: 72 },
+  optionOn: { borderColor: c.accent, backgroundColor: c.accentSoft },
+  pressed: { transform: [{ scale: 0.98 }] },
+  more: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: spacing.xs + 2, paddingVertical: spacing.sm, paddingHorizontal: spacing.xs },
+  status: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: c.accentSoft, borderRadius: radius.md, padding: spacing.md },
+}));

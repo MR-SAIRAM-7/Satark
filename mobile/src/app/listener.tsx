@@ -2,13 +2,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 import { KillChainMeter } from '@/components/KillChainMeter';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Pill } from '@/components/ui/primitives';
 import { goBack, Screen } from '@/components/ui/Screen';
 import { markLocalListenSession, startCallCut } from '@/features/calls/guard';
 import { SCAMMER_NUMBER } from '@/features/demo/scenarios';
@@ -18,7 +19,7 @@ import { useT } from '@/i18n';
 import { api } from '@/services/api';
 import { useSettings } from '@/store/settings';
 import { newId } from '@/store/storage';
-import { colors, radius, spacing, verdictPalette } from '@/theme/tokens';
+import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
 import { clockTime } from '@/utils/time';
 
 /** Length of each audio chunk sent for transcription. */
@@ -31,6 +32,8 @@ const CHUNK_MS = 5000;
  */
 export default function ListenerScreen() {
   const t = useT();
+  const styles = useStyles();
+  const { c, verdict: looks } = useTheme();
   const params = useLocalSearchParams<{ demo?: string; number?: string }>();
   const role = useSettings((s) => s.role);
   const [state, setState] = useState<ListenerState>(EMPTY_LISTENER);
@@ -127,7 +130,7 @@ export default function ListenerScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.demo]);
 
-  const tone = state.score >= 70 ? verdictPalette.scam : state.score >= 40 ? verdictPalette.suspicious : verdictPalette.safe;
+  const tone = state.score >= 70 ? looks.scam : state.score >= 40 ? looks.suspicious : looks.safe;
 
   return (
     <Screen
@@ -143,30 +146,30 @@ export default function ListenerScreen() {
           </>
         )
       }>
-      <Card style={styles.status} tone={listening ? { main: tone.main, soft: tone.soft } : undefined}>
+      <Card style={styles.status} tone={listening ? { main: tone.fill, soft: tone.soft } : undefined}>
         <View style={styles.micWrap}>
-          {listening ? <Animated.View style={[styles.micRing, { backgroundColor: tone.main }, ringStyle]} /> : null}
-          <View style={[styles.mic, { backgroundColor: listening ? tone.main : colors.surfaceAlt }]}>
-            <Ionicons name={listening ? 'mic' : 'mic-off'} size={34} color={listening ? colors.textOnDark : colors.textFaint} />
+          {listening ? <Animated.View style={[styles.micRing, { backgroundColor: tone.fill }, ringStyle]} /> : null}
+          <View style={[styles.mic, { backgroundColor: listening ? tone.fill : c.surface3 }]}>
+            <Ionicons name={listening ? 'mic' : 'mic-off'} size={32} color={listening ? '#FFFFFF' : c.textFaint} />
           </View>
         </View>
         <View style={styles.flex}>
-          <AppText variant="heading" color={listening ? tone.deep : colors.text}>
+          <AppText variant="heading" color={listening ? tone.text : c.text}>
             {listening ? t('listener.listening') : t('listener.idle')}
           </AppText>
-          <AppText variant="label" color={colors.textMuted}>
+          <AppText variant="label" color={c.textMuted}>
             {t('listener.privacy')}
           </AppText>
         </View>
       </Card>
 
       {state.cut ? (
-        <Card tone={{ main: colors.danger, soft: colors.dangerSoft }} style={styles.cut}>
-            <Ionicons name="cut" size={26} color={colors.danger} />
-            <AppText variant="bodyStrong" color={colors.dangerDeep} style={styles.flex}>
-              {t('listener.cut')}
-            </AppText>
-        </Card>
+        <View style={styles.cut}>
+          <Ionicons name="cut" size={24} color={c.dangerText} />
+          <AppText variant="bodyStrong" color={c.dangerText} style={styles.flex}>
+            {t('listener.cut')}
+          </AppText>
+        </View>
       ) : null}
 
       <Card style={styles.section}>
@@ -174,13 +177,9 @@ export default function ListenerScreen() {
           <AppText variant="heading" style={styles.flex}>
             {t('verdict.killchain')}
           </AppText>
-          <View style={[styles.scorePill, { backgroundColor: tone.soft }]}>
-            <AppText variant="label" color={tone.deep}>
-              {t('verdict.risk', { score: state.score })}
-            </AppText>
-          </View>
+          <Pill label={t('verdict.riskShort', { score: state.score })} color={tone.text} soft={tone.soft} />
         </View>
-        <KillChainMeter stage={state.stage} evidence={state.evidence} tone={tone.main} />
+        <KillChainMeter stage={state.stage} evidence={state.evidence} tone={tone.fill} />
       </Card>
 
       {state.lines.length > 0 ? (
@@ -188,10 +187,10 @@ export default function ListenerScreen() {
           <AppText variant="heading">{t('listener.transcript')}</AppText>
           {state.lines.map((line) => (
             <Animated.View key={line.id} entering={FadeInDown.duration(260)} style={styles.line}>
-              <AppText variant="caption" color={colors.textFaint} style={styles.lineTime}>
+              <AppText variant="caption" color={c.textFaint} style={styles.lineTime}>
                 {clockTime(line.at)}
               </AppText>
-              <View style={[styles.bubble, line.stage >= 3 && { backgroundColor: colors.dangerSoft, borderColor: colors.danger }]}>
+              <View style={[styles.bubble, line.stage >= 3 && { backgroundColor: c.dangerSoft, borderColor: c.danger + '66' }]}>
                 <AppText variant="body">{line.text}</AppText>
               </View>
             </Animated.View>
@@ -202,24 +201,23 @@ export default function ListenerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ c }) => ({
   flex: { flex: 1 },
   status: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   micWrap: { width: 72, height: 72, alignItems: 'center', justifyContent: 'center' },
   micRing: { position: 'absolute', width: 72, height: 72, borderRadius: 36 },
   mic: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
-  cut: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  cut: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: c.dangerSoft },
   section: { gap: spacing.md },
   meterTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  scorePill: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill },
   line: { gap: 2 },
   lineTime: { marginLeft: spacing.xs },
   bubble: {
     padding: spacing.md,
     borderRadius: radius.md,
     borderTopLeftRadius: 4,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: c.surface2,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-});
+}));

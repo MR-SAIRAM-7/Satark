@@ -267,7 +267,8 @@ export const httpApi: SatarkApi = {
 
   async pairingCode() {
     try {
-      return (await request<{ code?: string }>('/guardian/code', { method: 'POST' })).code ?? null;
+      const data = await request<{ code?: string; expires_at?: number }>('/guardian/code', { method: 'POST' });
+      return data.code ? { code: data.code, expiresAt: data.expires_at ?? Date.now() + 5 * 60_000 } : null;
     } catch {
       return null;
     }

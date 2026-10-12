@@ -3,26 +3,32 @@ import { maskPhone } from '@satark/shared';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { DemoBanner } from '@/components/DemoBanner';
 import { AppText } from '@/components/ui/AppText';
-import { Button } from '@/components/ui/Button';
+import { Button, tapFeedback } from '@/components/ui/Button';
 import { goBack } from '@/components/ui/Screen';
 import { CUT_COUNTDOWN_SECONDS, finishCallCut } from '@/features/calls/guard';
 import { useT } from '@/i18n';
 import { isNativeAvailable, SatarkNative } from '@/services/native';
-import { colors, MAX_CONTENT_WIDTH, radius, spacing } from '@/theme/tokens';
+import { MAX_CONTENT_WIDTH, radius, spacing } from '@/theme/tokens';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const RING = 220;
-const STROKE = 14;
+const RING = 232;
+const STROKE = 12;
 const CIRCUMFERENCE = Math.PI * (RING - STROKE);
 
 type Phase = 'countdown' | 'ended' | 'kept' | 'manual';
+
+const GRADIENTS = {
+  danger: ['#C8231B', '#5E0B07'],
+  good: ['#0E9A62', '#04432B'],
+  careful: ['#C97808', '#5A3200'],
+} as const;
 
 /**
  * Live call protection (F10) and the "blocked before ringing" notice (F9).
@@ -71,11 +77,11 @@ export default function CallAlertScreen() {
 
   const done = blocked || phase !== 'countdown';
   const good = blocked || phase === 'ended';
-  const gradient = done ? (good ? (['#17A05C', '#0A5A32'] as const) : (['#F0A020', '#B4580A'] as const)) : (['#E03131', '#7A0C0C'] as const);
+  const gradient = done ? (good ? GRADIENTS.good : GRADIENTS.careful) : GRADIENTS.danger;
 
   return (
     <LinearGradient colors={gradient} style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.lg }]}>
-      <DemoBanner />
+      <DemoBanner onDark />
       <View style={styles.content}>
         {blocked ? (
           <Result
@@ -86,26 +92,28 @@ export default function CallAlertScreen() {
           />
         ) : phase === 'countdown' ? (
           <>
-            <Ionicons name="warning" size={56} color={colors.textOnDark} />
-            <AppText variant="display" color={colors.textOnDark} center style={styles.title} accessibilityRole="header">
+            <View style={styles.kicker}>
+              <Ionicons name="warning" size={18} color="#FFFFFF" />
+              <AppText variant="overline" color="#FFFFFF">
+                {maskPhone(number)}
+              </AppText>
+            </View>
+            <AppText variant="hero" color="#FFFFFF" center accessibilityRole="header">
               {t('call.title')}
             </AppText>
-            <AppText variant="heading" color="rgba(255,255,255,0.95)" center>
+            <AppText variant="heading" color="rgba(255,255,255,0.9)" center>
               {t('call.body')}
-            </AppText>
-            <AppText variant="label" color="rgba(255,255,255,0.85)" center>
-              {maskPhone(number)}
             </AppText>
 
             <View style={styles.ring} accessibilityLabel={`${seconds} ${t('call.seconds')}`} accessibilityLiveRegion="assertive">
               {/* Rotated so the ring empties from 12 o'clock; a style transform works on Android and the web alike. */}
               <Svg width={RING} height={RING} style={styles.ringSvg}>
-                <Circle cx={RING / 2} cy={RING / 2} r={(RING - STROKE) / 2} stroke="rgba(255,255,255,0.25)" strokeWidth={STROKE} fill="none" />
+                <Circle cx={RING / 2} cy={RING / 2} r={(RING - STROKE) / 2} stroke="rgba(255,255,255,0.18)" strokeWidth={STROKE} fill="none" />
                 <AnimatedCircle
                   cx={RING / 2}
                   cy={RING / 2}
                   r={(RING - STROKE) / 2}
-                  stroke={colors.textOnDark}
+                  stroke="#FFFFFF"
                   strokeWidth={STROKE}
                   strokeLinecap="round"
                   strokeDasharray={CIRCUMFERENCE}
@@ -114,17 +122,17 @@ export default function CallAlertScreen() {
                 />
               </Svg>
               <View style={styles.ringText}>
-                <AppText variant="display" color={colors.textOnDark} style={styles.count}>
+                <AppText variant="caption" color="rgba(255,255,255,0.86)">
+                  {t('call.cutting')}
+                </AppText>
+                <AppText variant="hero" color="#FFFFFF" style={styles.count}>
                   {seconds}
                 </AppText>
-                <AppText variant="label" color="rgba(255,255,255,0.9)">
+                <AppText variant="caption" color="rgba(255,255,255,0.86)">
                   {t('call.seconds')}
                 </AppText>
               </View>
             </View>
-            <AppText variant="bodyStrong" color={colors.textOnDark} center>
-              {t('call.cutting')}
-            </AppText>
           </>
         ) : phase === 'ended' ? (
           <Result icon="checkmark-circle" title={t('call.ended')} body={t('call.ended.body')} />
@@ -138,8 +146,21 @@ export default function CallAlertScreen() {
       <View style={styles.footer}>
         {!done ? (
           <>
-            <Button testID="its-safe" label={t('call.safe')} icon="hand-left" variant="onDark" size="lg" onPress={() => settle(false)} />
-            <Button label={t('call.cutNow')} icon="close-circle" variant="onDark" onPress={() => settle(true)} />
+            <Pressable
+              testID="cut-now"
+              accessibilityRole="button"
+              accessibilityLabel={t('call.cutNow')}
+              onPress={() => {
+                tapFeedback();
+                void settle(true);
+              }}
+              style={({ pressed }) => [styles.cutNow, pressed && { transform: [{ scale: 0.97 }] }]}>
+              <Ionicons name="call" size={22} color="#B3140D" style={styles.hangUp} />
+              <AppText variant="bodyStrong" color="#B3140D">
+                {t('call.cutNow')}
+              </AppText>
+            </Pressable>
+            <Button testID="its-safe" label={t('call.safe')} icon="hand-left-outline" variant="onDark" size="lg" onPress={() => settle(false)} />
           </>
         ) : (
           <>
@@ -164,20 +185,20 @@ export default function CallAlertScreen() {
 function Result({ icon, title, body, note }: { icon: keyof typeof Ionicons.glyphMap; title: string; body?: string; note?: string }) {
   return (
     <>
-      <View style={styles.resultIcon}>
-        <Ionicons name={icon} size={72} color={colors.safe} />
-      </View>
-      <AppText variant="display" color={colors.textOnDark} center accessibilityRole="header">
+      <Animated.View entering={ZoomIn.duration(320)} style={styles.resultIcon}>
+        <Ionicons name={icon} size={64} color="#FFFFFF" />
+      </Animated.View>
+      <AppText variant="display" color="#FFFFFF" center accessibilityRole="header">
         {title}
       </AppText>
       {body ? (
-        <AppText variant="heading" color="rgba(255,255,255,0.95)" center>
+        <AppText variant="heading" color="rgba(255,255,255,0.9)" center>
           {body}
         </AppText>
       ) : null}
       {note ? (
         <View style={styles.note}>
-          <AppText variant="label" color={colors.textOnDark}>
+          <AppText variant="label" color="#FFFFFF">
             {note}
           </AppText>
         </View>
@@ -198,12 +219,24 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingHorizontal: spacing.xl,
   },
-  title: { fontSize: 42, lineHeight: 54, letterSpacing: 1 },
-  ring: { width: RING, height: RING, alignItems: 'center', justifyContent: 'center', marginVertical: spacing.lg },
+  kicker: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: 'rgba(0,0,0,0.22)' },
+  ring: { width: RING, height: RING, alignItems: 'center', justifyContent: 'center', marginTop: spacing.lg },
   ringSvg: { transform: [{ rotate: '-90deg' }] },
   ringText: { position: 'absolute', alignItems: 'center' },
-  count: { fontSize: 84, lineHeight: 92 },
-  resultIcon: { width: 132, height: 132, borderRadius: 66, backgroundColor: colors.textOnDark, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
+  count: { fontSize: 88, lineHeight: 96 },
+  resultIcon: {
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
   note: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, backgroundColor: 'rgba(0,0,0,0.22)' },
   footer: { width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center', paddingHorizontal: spacing.xl, gap: spacing.md },
+  cutNow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, minHeight: 62, borderRadius: 999, backgroundColor: '#FFFFFF' },
+  hangUp: { transform: [{ rotate: '135deg' }] },
 });

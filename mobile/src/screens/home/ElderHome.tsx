@@ -1,13 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { CheckRow } from '@/components/CheckRow';
 import { ShieldCard } from '@/components/ShieldCard';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { AppText } from '@/components/ui/AppText';
 import { tapFeedback, type IconName } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { EmptyState, SectionHeader } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { HELPLINE_1930 } from '@/data/directory';
@@ -17,22 +18,25 @@ import { dial } from '@/services/dial';
 import { useIntel } from '@/store/activity';
 import { useChecks } from '@/store/checks';
 import { useSettings } from '@/store/settings';
-import { colors, radius, shadow, spacing } from '@/theme/tokens';
+import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
+import { greetingKey } from '@/utils/time';
 
-function QuickAction({ icon, label, tone, onPress }: { icon: IconName; label: string; tone: { color: string; soft: string }; onPress: () => void }) {
+function QuickAction({ icon, label, color, soft, onPress, testID }: { icon: IconName; label: string; color: string; soft: string; onPress: () => void; testID?: string }) {
+  const styles = useStyles();
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={() => {
         tapFeedback();
         onPress();
       }}
-      style={({ pressed }) => [styles.quick, pressed && { opacity: 0.8 }]}>
-      <View style={[styles.quickIcon, { backgroundColor: tone.soft }]}>
-        <Ionicons name={icon} size={28} color={tone.color} />
+      style={({ pressed }) => [styles.quick, pressed && styles.pressed]}>
+      <View style={[styles.quickIcon, { backgroundColor: soft }]}>
+        <Ionicons name={icon} size={26} color={color} />
       </View>
-      <AppText variant="label" center numberOfLines={2}>
+      <AppText variant="label" numberOfLines={2} style={styles.quickLabel}>
         {label}
       </AppText>
     </Pressable>
@@ -40,12 +44,14 @@ function QuickAction({ icon, label, tone, onPress }: { icon: IconName; label: st
 }
 
 function Stat({ value, label, color }: { value: number; label: string; color: string }) {
+  const styles = useStyles();
+  const { c } = useTheme();
   return (
     <View style={styles.stat}>
-      <AppText variant="title" color={color}>
+      <AppText variant="numeral" color={color}>
         {value}
       </AppText>
-      <AppText variant="caption" color={colors.textMuted} center numberOfLines={2}>
+      <AppText variant="caption" color={c.textMuted} numberOfLines={2}>
         {label}
       </AppText>
     </View>
@@ -55,15 +61,19 @@ function Stat({ value, label, color }: { value: number; label: string; color: st
 /** The elder's home: one status, one big button, three ways to reach a real person. */
 export function ElderHome() {
   const t = useT();
+  const styles = useStyles();
+  const { c } = useTheme();
   const protection = useProtection();
   const name = useSettings((s) => s.elder.name);
   const guardian = useSettings((s) => s.guardian);
+  const demoMode = useSettings((s) => s.demoMode);
   const update = useSettings((s) => s.update);
   const checks = useChecks((s) => s.checks);
   const blockedCalls = useIntel((s) => s.blockedCalls.length);
 
   const scamsStopped = checks.filter((c) => c.response.verdict === 'scam').length;
   const recent = checks.slice(0, 3);
+  const simulated = !protection.nativeAvailable && demoMode;
 
   const onShieldPress = () => {
     if (protection.state === 'paused') update({ protectionPaused: false });
@@ -72,79 +82,90 @@ export function ElderHome() {
 
   return (
     <Screen inTabs>
-      <View style={styles.greeting}>
-        <View style={styles.greetingText}>
-          <AppText variant="title">{name ? t('home.greeting', { name }) : t('home.greeting.plain')}</AppText>
-          <AppText variant="label" color={colors.textMuted}>
-            {t('app.name')} · {t('app.tagline')}
+      <View style={styles.header}>
+        <View style={styles.flex}>
+          <AppText variant="overline" color={c.textMuted}>
+            {t(greetingKey())}
+          </AppText>
+          <AppText variant="display" accessibilityRole="header">
+            {name ? t('home.greeting', { name }) : t('home.greeting.plain')}
           </AppText>
         </View>
+        <ThemeToggle />
       </View>
 
-      <ShieldCard state={protection.state} onPress={onShieldPress} />
+      <Animated.View entering={FadeInDown.duration(380)}>
+        <ShieldCard
+          state={protection.state}
+          onPress={onShieldPress}
+          checks={[
+            { label: t('home.chip.messages'), on: protection.state === 'protected' },
+            { label: t('home.chip.calls'), on: protection.status.callScreening || simulated },
+            { label: t('home.chip.family'), on: Boolean(guardian) },
+          ]}
+        />
+      </Animated.View>
 
-      <Pressable
-        testID="ask-button"
-        accessibilityRole="button"
-        accessibilityLabel={t('home.ask')}
-        onPress={() => {
-          tapFeedback();
-          router.push('/check');
-        }}
-        style={({ pressed }) => [styles.askShadow, pressed && { transform: [{ scale: 0.985 }] }]}>
-        <LinearGradient colors={['#2F7DF6', '#1554C8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ask}>
-          <View style={styles.askIcon}>
-            <Ionicons name="search" size={34} color={colors.brandBright} />
-          </View>
-          <View style={styles.askText}>
-            <AppText variant="display" color={colors.textOnDark} style={styles.askTitle}>
-              {t('home.ask')}
-            </AppText>
-            <AppText variant="label" color="rgba(255,255,255,0.92)">
-              {t('home.ask.sub')}
-            </AppText>
-          </View>
-        </LinearGradient>
-      </Pressable>
+      <Animated.View entering={FadeInDown.delay(70).duration(380)}>
+        <Pressable
+          testID="ask-button"
+          accessibilityRole="button"
+          accessibilityLabel={t('home.ask')}
+          onPress={() => {
+            tapFeedback();
+            router.push('/check');
+          }}
+          style={({ pressed }) => [styles.askWrap, pressed && styles.pressed]}>
+          <LinearGradient colors={[c.accent, c.accentPressed]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ask}>
+            <View style={styles.askIcon}>
+              <Ionicons name="scan" size={28} color={c.accent} />
+            </View>
+            <View style={styles.flex}>
+              <AppText variant="title" color={c.onFill}>
+                {t('home.ask')}
+              </AppText>
+              <AppText variant="label" color="rgba(255,255,255,0.86)">
+                {t('home.ask.sub')}
+              </AppText>
+            </View>
+            <View style={styles.askArrow}>
+              <Ionicons name="arrow-forward" size={22} color={c.onFill} />
+            </View>
+          </LinearGradient>
+        </Pressable>
+      </Animated.View>
 
-      <View style={styles.quickRow}>
+      <Animated.View entering={FadeInDown.delay(140).duration(380)} style={styles.quickRow}>
         {guardian ? (
           <QuickAction
             icon="call"
             label={t('home.callFamily', { name: guardian.name })}
-            tone={{ color: colors.safe, soft: colors.safeSoft }}
+            color={c.safeText}
+            soft={c.safeSoft}
             onPress={() => dial(guardian.phone, { name: guardian.name, family: true })}
           />
         ) : null}
         <QuickAction
           icon="alert-circle"
           label={t('home.call1930')}
-          tone={{ color: colors.danger, soft: colors.dangerSoft }}
+          color={c.dangerText}
+          soft={c.dangerSoft}
           onPress={() => dial(HELPLINE_1930.number, { name: HELPLINE_1930.name })}
         />
-        <QuickAction
-          icon="business"
-          label={t('home.realNumbers')}
-          tone={{ color: colors.brandBright, soft: colors.brandSoft }}
-          onPress={() => router.push('/directory')}
-        />
-      </View>
+        <QuickAction icon="business" label={t('home.realNumbers')} color={c.accentText} soft={c.accentSoft} onPress={() => router.push('/directory')} />
+      </Animated.View>
 
-      <Card style={styles.stats}>
-        <Stat value={checks.length} label={t('home.stats.checked')} color={colors.brand} />
+      <Animated.View entering={FadeInDown.delay(210).duration(380)} style={styles.stats}>
+        <Stat value={checks.length} label={t('home.stats.checked')} color={c.text} />
         <View style={styles.statDivider} />
-        <Stat value={scamsStopped} label={t('home.stats.stopped')} color={colors.danger} />
+        <Stat value={scamsStopped} label={t('home.stats.stopped')} color={c.dangerText} />
         <View style={styles.statDivider} />
-        <Stat value={blockedCalls} label={t('home.stats.blocked')} color={colors.warn} />
-      </Card>
+        <Stat value={blockedCalls} label={t('home.stats.blocked')} color={c.warnText} />
+      </Animated.View>
 
-      <SectionHeader
-        title={t('home.recent')}
-        action={checks.length > 3 ? t('common.seeAll') : undefined}
-        onAction={() => router.push('/activity')}
-      />
+      <SectionHeader title={t('home.recent')} action={checks.length > 3 ? t('common.seeAll') : undefined} onAction={() => router.push('/activity')} />
       {recent.length === 0 ? (
-        <EmptyState icon="mail-open" title={t('home.none')} body={t('home.none.sub')} />
+        <EmptyState icon="mail-open-outline" title={t('home.none')} body={t('home.none.sub')} />
       ) : (
         <View style={styles.list}>
           {recent.map((check) => (
@@ -156,30 +177,41 @@ export function ElderHome() {
   );
 }
 
-const styles = StyleSheet.create({
-  greeting: { flexDirection: 'row', alignItems: 'center', paddingTop: spacing.sm },
-  greetingText: { flex: 1, gap: 2 },
-  askShadow: { borderRadius: radius.xl, ...shadow.raised },
-  ask: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, padding: spacing.xl, borderRadius: radius.xl, minHeight: 132 },
-  askIcon: { width: 68, height: 68, borderRadius: 34, backgroundColor: colors.textOnDark, alignItems: 'center', justifyContent: 'center' },
-  askText: { flex: 1, gap: spacing.xs },
-  askTitle: { fontSize: 30, lineHeight: 40 },
+const useStyles = makeStyles(({ c, shadow }) => ({
+  flex: { flex: 1 },
+  pressed: { transform: [{ scale: 0.975 }], opacity: 0.94 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.sm },
+  askWrap: { borderRadius: radius.xl, ...shadow.raised },
+  ask: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, padding: spacing.lg + 4, borderRadius: radius.xl, minHeight: 108 },
+  askIcon: { width: 58, height: 58, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  askArrow: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
   quickRow: { flexDirection: 'row', gap: spacing.md },
   quick: {
     flex: 1,
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.surface,
+    gap: spacing.md,
+    padding: spacing.md + 2,
+    minHeight: 118,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
+    justifyContent: 'space-between',
     ...shadow.card,
   },
-  quickIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-  stats: { flexDirection: 'row', alignItems: 'center' },
-  stat: { flex: 1, alignItems: 'center', gap: 2 },
-  statDivider: { width: 1, height: 36, backgroundColor: colors.border },
-  list: { gap: spacing.md },
-});
+  quickIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  quickLabel: { fontWeight: '600' },
+  stats: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: c.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: c.border,
+    ...shadow.card,
+  },
+  stat: { flex: 1, paddingHorizontal: spacing.md, gap: 2 },
+  statDivider: { width: 1, backgroundColor: c.border },
+  list: { gap: spacing.sm + 2 },
+}));

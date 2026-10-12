@@ -13,12 +13,19 @@ export const familyRouter = Router();
 const readiness = (drills: { passed?: boolean | null }[]) =>
   drills.length ? Math.round((drills.filter((d) => d.passed).length / drills.length) * 100) : null;
 
-/** The elder's phone shows this code; the guardian (or Home Guardian phone) types it in. */
+/** How long a pairing code works. Short, because anyone who sees it can join the elder's alerts. */
+export const PAIRING_TTL_MS = 5 * 60_000;
+
+/**
+ * The elder's phone makes a fresh code when they tap "Pair a family phone";
+ * the guardian (or Home Guardian phone) types it in within five minutes. A new
+ * code replaces the old one, and a code works once.
+ */
 familyRouter.post('/guardian/code', requireAuth('elder'), async (req, res) => {
   const code = randomCode(6);
-  const expires = new Date(Date.now() + 15 * 60_000);
+  const expires = new Date(Date.now() + PAIRING_TTL_MS);
   await User.findByIdAndUpdate(req.user!.id, { pairingCode: code, pairingExpires: expires });
-  res.json({ code, expires_at: expires.getTime() });
+  res.json({ code, expires_at: expires.getTime(), ttl_seconds: PAIRING_TTL_MS / 1000 });
 });
 
 familyRouter.post('/guardian/link', requireAuth('guardian', 'listener'), async (req, res) => {

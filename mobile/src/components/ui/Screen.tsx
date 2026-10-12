@@ -1,17 +1,20 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DemoBanner } from '@/components/DemoBanner';
-import { colors, MAX_CONTENT_WIDTH, spacing, TOUCH } from '@/theme/tokens';
+import { makeStyles, MAX_CONTENT_WIDTH, spacing, TAB_BAR_HEIGHT, useTheme } from '@/theme/tokens';
 
 import { AppText } from './AppText';
+import { IconButton } from './Button';
 
 export interface ScreenProps {
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
+  /** Small uppercase line above the title. */
+  eyebrow?: string;
   /** Shows a back button. Pass a function to override where it goes. */
   back?: boolean | (() => void);
   right?: React.ReactNode;
@@ -20,9 +23,9 @@ export interface ScreenProps {
   footer?: React.ReactNode;
   background?: string;
   contentStyle?: StyleProp<ViewStyle>;
-  /** Tab screens sit above the tab bar, which already handles the bottom inset. */
+  /** Tab screens: large title, and room for the floating tab bar. */
   inTabs?: boolean;
-  /** Rendered under another header (e.g. a verdict hero): no top inset, no demo banner. */
+  /** Rendered under another header (e.g. a hero): no top inset, no demo banner. */
   embedded?: boolean;
 }
 
@@ -31,71 +34,86 @@ export function goBack() {
   else router.replace('/');
 }
 
+/** Space the floating tab bar takes at the bottom of a tab screen. */
+export function useTabBarSpace(): number {
+  const insets = useSafeAreaInsets();
+  return TAB_BAR_HEIGHT + Math.max(insets.bottom, spacing.md) + spacing.md;
+}
+
 export function Screen({
   children,
   title,
   subtitle,
+  eyebrow,
   back,
   right,
   scroll = true,
   footer,
-  background = colors.bg,
+  background,
   contentStyle,
   inTabs,
   embedded,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
-  const hasHeader = Boolean(title || back || right);
+  const tabSpace = useTabBarSpace();
+  const styles = useStyles();
+  const { c } = useTheme();
+  const hasBar = Boolean(back || right);
+  const bottomInset = inTabs ? tabSpace : insets.bottom;
 
   const content = (
-    <View style={[styles.content, contentStyle]}>{children}</View>
+    <Animated.View entering={FadeIn.duration(220)} style={[styles.content, contentStyle]}>
+      {title || eyebrow ? (
+        <View style={styles.titleBlock}>
+          {eyebrow ? (
+            <AppText variant="overline" color={c.accentText}>
+              {eyebrow}
+            </AppText>
+          ) : null}
+          {title ? (
+            <AppText variant={inTabs ? 'display' : 'title'} accessibilityRole="header">
+              {title}
+            </AppText>
+          ) : null}
+          {subtitle ? (
+            <AppText variant="label" color={c.textMuted}>
+              {subtitle}
+            </AppText>
+          ) : null}
+        </View>
+      ) : null}
+      {children}
+    </Animated.View>
   );
 
   return (
-    <View style={[styles.root, { backgroundColor: background, paddingTop: embedded ? 0 : insets.top }]}>
+    <View style={[styles.root, { backgroundColor: background ?? c.bg, paddingTop: embedded ? 0 : insets.top }]}>
       {embedded ? null : <DemoBanner />}
-      {hasHeader ? (
-        <View style={styles.header}>
+      {hasBar ? (
+        <View style={styles.bar}>
           {back ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              hitSlop={8}
-              onPress={typeof back === 'function' ? back : goBack}
-              style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.6 }]}>
-              <Ionicons name="arrow-back" size={26} color={colors.brand} />
-            </Pressable>
-          ) : null}
-          <View style={styles.headerText}>
-            {title ? (
-              <AppText variant="title" numberOfLines={2} accessibilityRole="header">
-                {title}
-              </AppText>
-            ) : null}
-            {subtitle ? (
-              <AppText variant="label" color={colors.textMuted}>
-                {subtitle}
-              </AppText>
-            ) : null}
-          </View>
-          {right}
+            <IconButton icon="chevron-back" label="Back" onPress={typeof back === 'function' ? back : goBack} />
+          ) : (
+            <View />
+          )}
+          <View style={styles.right}>{right}</View>
         </View>
       ) : null}
 
       {scroll ? (
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.xxl + (footer || inTabs ? 0 : insets.bottom) }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.xxl + (footer ? 0 : bottomInset) }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           {content}
         </ScrollView>
       ) : (
-        <View style={styles.flex}>{content}</View>
+        <View style={[styles.flex, { paddingBottom: footer ? 0 : bottomInset }]}>{content}</View>
       )}
 
       {footer ? (
-        <View style={[styles.footer, { paddingBottom: spacing.md + (inTabs ? 0 : insets.bottom) }]}>
+        <View style={[styles.footer, { paddingBottom: spacing.md + bottomInset }]}>
           <View style={styles.footerInner}>{footer}</View>
         </View>
       ) : null}
@@ -103,31 +121,22 @@ export function Screen({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ c }) => ({
   root: { flex: 1 },
   flex: { flex: 1 },
-  header: {
+  bar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingTop: spacing.sm,
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
   },
-  headerText: { flex: 1, gap: 2 },
-  backButton: {
-    width: TOUCH - 8,
-    height: TOUCH - 8,
-    borderRadius: (TOUCH - 8) / 2,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  titleBlock: { gap: spacing.xs, paddingTop: spacing.sm, paddingBottom: spacing.xs },
   scrollContent: { flexGrow: 1 },
   content: {
     flex: 1,
@@ -135,15 +144,15 @@ const styles = StyleSheet.create({
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.md,
     gap: spacing.lg,
   },
   footer: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: c.bg,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: c.border,
   },
   footerInner: { width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center', gap: spacing.sm },
-});
+}));

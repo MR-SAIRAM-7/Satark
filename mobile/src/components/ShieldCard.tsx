@@ -1,36 +1,66 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useIsFocused } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
+import Svg, { Circle } from 'react-native-svg';
 
 import type { ProtectionState } from '@/hooks/useProtection';
 import { useT } from '@/i18n';
-import { colors, radius, shadow, spacing } from '@/theme/tokens';
+import { radius, spacing, useTheme } from '@/theme/tokens';
 
 import { AppText } from './ui/AppText';
-import { tapFeedback } from './ui/Button';
+import { Glow } from './ui/Glow';
+import { tapFeedback, type IconName } from './ui/Button';
 
-const LOOK: Record<ProtectionState, { gradient: readonly [string, string]; icon: keyof typeof Ionicons.glyphMap; title: 'home.protected' | 'home.limited' | 'home.paused' }> = {
-  protected: { gradient: ['#1A9A5B', '#0A5A32'], icon: 'shield-checkmark', title: 'home.protected' },
-  limited: { gradient: ['#F0A020', '#B4580A'], icon: 'shield-half', title: 'home.limited' },
-  paused: { gradient: ['#6B7890', '#3F4A5F'], icon: 'pause-circle', title: 'home.paused' },
+const LOOK: Record<ProtectionState, { color: string; icon: IconName; title: 'home.protected' | 'home.limited' | 'home.paused'; status: 'home.status.on' | 'home.status.limited' | 'home.status.off' }> = {
+  protected: { color: '#3BE39A', icon: 'shield-checkmark', title: 'home.protected', status: 'home.status.on' },
+  limited: { color: '#FFB547', icon: 'shield-half', title: 'home.limited', status: 'home.status.limited' },
+  paused: { color: '#9AA3B5', icon: 'pause', title: 'home.paused', status: 'home.status.off' },
 };
 
-/** The home screen's status hero. A slow pulse says "Satark is watching" without any text. */
-export function ShieldCard({ state, onPress }: { state: ProtectionState; onPress?: () => void }) {
+const RADAR = 108;
+
+function Ripple({ progress, color }: { progress: SharedValue<number>; color: string }) {
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.55 * (1 - progress.value),
+    transform: [{ scale: 0.55 + progress.value * 0.75 }],
+  }));
+  return <Animated.View pointerEvents="none" style={[styles.ripple, { borderColor: color }, style]} />;
+}
+
+export interface ShieldCardProps {
+  state: ProtectionState;
+  onPress?: () => void;
+  /** What is covered right now, shown as ticks under the title. */
+  checks?: { label: string; on: boolean }[];
+}
+
+/**
+ * The home screen's hero: Satark's radar. Two ripples sweep outwards while
+ * protection is on, so "Satark is watching" reads without a word.
+ */
+export function ShieldCard({ state, onPress, checks = [] }: ShieldCardProps) {
   const t = useT();
+  const { c, shadow } = useTheme();
   const look = LOOK[state];
-  const pulse = useSharedValue(0);
+  const first = useSharedValue(0);
+  const second = useSharedValue(0);
+  // The radar only sweeps while Home is on screen: no animation running behind other screens.
+  const focused = useIsFocused();
+  const sweeping = focused && state !== 'paused';
 
   useEffect(() => {
-    pulse.value = state === 'protected' ? withRepeat(withTiming(1, { duration: 2200, easing: Easing.out(Easing.quad) }), -1, false) : 0;
-  }, [state, pulse]);
-
-  const ringStyle = useAnimatedStyle(() => ({
-    opacity: 0.45 * (1 - pulse.value),
-    transform: [{ scale: 1 + pulse.value * 0.55 }],
-  }));
+    if (!sweeping) {
+      first.value = 0;
+      second.value = 0;
+      return;
+    }
+    const sweep = withRepeat(withTiming(1, { duration: 2600, easing: Easing.out(Easing.quad) }), -1, false);
+    first.value = sweep;
+    second.value = withDelay(1300, withRepeat(withTiming(1, { duration: 2600, easing: Easing.out(Easing.quad) }), -1, false));
+  }, [sweeping, first, second]);
 
   return (
     <Pressable
@@ -41,32 +71,84 @@ export function ShieldCard({ state, onPress }: { state: ProtectionState; onPress
         tapFeedback();
         onPress?.();
       }}
-      style={({ pressed }) => [styles.shadow, pressed && { opacity: 0.92 }]}>
-      <LinearGradient colors={look.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
-        <View style={styles.shieldWrap}>
-          <Animated.View style={[styles.ring, ringStyle]} />
-          <View style={styles.shield}>
-            <Ionicons name={look.icon} size={40} color={look.gradient[1]} />
+      style={({ pressed }) => [styles.shadowWrap, shadow.raised, pressed && { transform: [{ scale: 0.985 }] }]}>
+      <LinearGradient colors={c.ink} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
+        {/* Soft status glow behind the radar. */}
+        <Glow color={look.color} size={340} opacity={0.3} style={styles.glow} />
+
+        <View style={styles.statusRow}>
+          <View style={[styles.statusDot, { backgroundColor: look.color }]} />
+          <AppText variant="overline" color="rgba(255,255,255,0.78)">
+            {t(look.status)}
+          </AppText>
+        </View>
+
+        <View style={styles.main}>
+          <View style={styles.radar}>
+            <Svg width={RADAR} height={RADAR} style={StyleSheet.absoluteFill}>
+              <Circle cx={RADAR / 2} cy={RADAR / 2} r={RADAR / 2 - 1} stroke="rgba(255,255,255,0.10)" strokeWidth={1} fill="none" />
+              <Circle cx={RADAR / 2} cy={RADAR / 2} r={RADAR / 2 - 16} stroke="rgba(255,255,255,0.14)" strokeWidth={1} fill="none" />
+              <Circle cx={RADAR / 2} cy={RADAR / 2} r={RADAR / 2 - 31} stroke={look.color} strokeOpacity={0.35} strokeWidth={1.5} fill="none" />
+            </Svg>
+            {sweeping ? (
+              <>
+                <Ripple progress={first} color={look.color} />
+                <Ripple progress={second} color={look.color} />
+              </>
+            ) : null}
+            <View style={[styles.core, { backgroundColor: look.color }]}>
+              <Ionicons name={look.icon} size={30} color="#08101F" />
+            </View>
+          </View>
+
+          <View style={styles.text}>
+            <AppText variant="title" color="#FFFFFF">
+              {t(look.title)}
+            </AppText>
+            <AppText variant="label" color="rgba(255,255,255,0.74)">
+              {t(`${look.title}.sub`)}
+            </AppText>
           </View>
         </View>
-        <View style={styles.text}>
-          <AppText variant="heading" color={colors.textOnDark}>
-            {t(look.title)}
-          </AppText>
-          <AppText variant="label" color="rgba(255,255,255,0.9)">
-            {t(`${look.title}.sub`)}
-          </AppText>
-        </View>
+
+        {checks.length > 0 ? (
+          <View style={styles.checks}>
+            {checks.map((check) => (
+              <View key={check.label} style={styles.check}>
+                <Ionicons name={check.on ? 'checkmark-circle' : 'ellipse-outline'} size={16} color={check.on ? look.color : 'rgba(255,255,255,0.45)'} />
+                <AppText variant="caption" color={check.on ? '#FFFFFF' : 'rgba(255,255,255,0.55)'} numberOfLines={1}>
+                  {check.label}
+                </AppText>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </LinearGradient>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  shadow: { borderRadius: radius.xl, ...shadow.raised },
-  card: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, padding: spacing.xl, borderRadius: radius.xl },
-  shieldWrap: { width: 72, height: 72, alignItems: 'center', justifyContent: 'center' },
-  ring: { position: 'absolute', width: 72, height: 72, borderRadius: 36, backgroundColor: colors.textOnDark },
-  shield: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.textOnDark, alignItems: 'center', justifyContent: 'center' },
-  text: { flex: 1, gap: 2 },
+  shadowWrap: { borderRadius: radius.xxl },
+  card: { borderRadius: radius.xxl, padding: spacing.xl, gap: spacing.lg, overflow: 'hidden' },
+  glow: { top: -90, left: -110 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  main: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  radar: { width: RADAR, height: RADAR, alignItems: 'center', justifyContent: 'center' },
+  ripple: { position: 'absolute', width: RADAR, height: RADAR, borderRadius: RADAR / 2, borderWidth: 2 },
+  core: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
+  text: { flex: 1, gap: spacing.xs },
+  checks: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  check: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
 });

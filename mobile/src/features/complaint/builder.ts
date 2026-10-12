@@ -1,4 +1,4 @@
-import { buildNarrative, buildSummary, formatInr, mask, type ParsedTxn } from '@satark/shared';
+import { buildNarrative, buildSummary, formatInr, mask, type ParsedTxn, type ScamType } from '@satark/shared';
 
 import { translate } from '@/i18n';
 import { api } from '@/services/api';
@@ -89,6 +89,13 @@ function fileWithCyberCell(complaint: Complaint, channel: string): void {
     .catch(() => undefined);
 }
 
+export interface BuildOptions {
+  /** The kind of scam, when the victim chose it (a described complaint). */
+  scamType?: ScamType;
+  /** Money the victim says they lost, when no bank SMS was caught. */
+  transaction?: (ParsedTxn & { at: number }) | null;
+}
+
 export interface BuildResult {
   complaint: Complaint;
   /** Seconds from tap to kit ready: the F12 metric (target under 30 s). */
@@ -100,7 +107,7 @@ export interface BuildResult {
  * hash every evidence item, write the complaint, render the PDF, then start
  * the tracker - which sends the first WhatsApp update.
  */
-export async function buildComplaint(checkId: string): Promise<BuildResult> {
+export async function buildComplaint(checkId: string, options: BuildOptions = {}): Promise<BuildResult> {
   const started = Date.now();
   const { checks, threads } = useChecks.getState();
   const origin = checks.find((c) => c.id === checkId);
@@ -121,7 +128,7 @@ export async function buildComplaint(checkId: string): Promise<BuildResult> {
   // A debit that followed this scam, if the golden-hour flow caught one.
   const lastTxn = useUi.getState().lastTxn;
   const linkedTxn = lastTxn && threadIds.has(lastTxn.relatedCheckId) ? lastTxn : null;
-  const transaction = linkedTxn ? { ...linkedTxn.txn, at: linkedTxn.at } : null;
+  const transaction = options.transaction ?? (linkedTxn ? { ...linkedTxn.txn, at: linkedTxn.at } : null);
 
   const indicators = related.flatMap((c) => c.indicators);
   const unique = (type: string) => [...new Set(indicators.filter((i) => i.type === type).map((i) => i.value))];
@@ -138,7 +145,7 @@ export async function buildComplaint(checkId: string): Promise<BuildResult> {
     id: newId('sat'),
     createdAt: Date.now(),
     checkIds: related.map((c) => c.id),
-    scamType: origin.response.scam_type,
+    scamType: options.scamType && options.scamType !== 'unknown' ? options.scamType : origin.response.scam_type,
     narrative: '',
     summary: '',
     suspect,

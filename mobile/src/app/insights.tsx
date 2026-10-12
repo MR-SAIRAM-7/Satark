@@ -1,15 +1,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { SCAM_TYPES, type ScamType } from '@satark/shared';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
 import { Card } from '@/components/ui/Card';
-import { IconBadge, SectionHeader } from '@/components/ui/primitives';
+import { Meter, SectionHeader } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { sourceById, SOURCES, STATS } from '@/data/sources';
 import { useLocalized, useT } from '@/i18n';
 import { useIntel } from '@/store/activity';
-import { colors, spacing } from '@/theme/tokens';
+import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
 
 const open = (url: string) => Linking.openURL(url).catch(() => undefined);
 
@@ -17,6 +17,8 @@ const open = (url: string) => Linking.openURL(url).catch(() => undefined);
 export default function InsightsScreen() {
   const t = useT();
   const localized = useLocalized();
+  const styles = useStyles();
+  const { c } = useTheme();
   const iocs = useIntel((s) => s.iocs);
   const all = Object.values(iocs);
 
@@ -28,17 +30,19 @@ export default function InsightsScreen() {
 
   return (
     <Screen back title={t('insights.title')} subtitle={t('learn.radar.sub')}>
-      <Card style={styles.community} tone={{ main: colors.safe, soft: colors.safeSoft }}>
-        <IconBadge name="people" color={colors.safe} soft={colors.surface} />
+      <View style={styles.community}>
+        <View style={styles.communityIcon}>
+          <Ionicons name="people" size={24} color={c.safeText} />
+        </View>
         <View style={styles.flex}>
-          <AppText variant="bodyStrong" color={colors.safeDeep}>
-            {t('insights.community')}
+          <AppText variant="numeral" color={c.safeText}>
+            {all.length}
           </AppText>
-          <AppText variant="label" color={colors.textMuted}>
+          <AppText variant="label" color={c.textMuted}>
             {t('insights.iocs', { n: all.length })}
           </AppText>
         </View>
-      </Card>
+      </View>
 
       {trending.length > 0 ? (
         <>
@@ -50,13 +54,11 @@ export default function InsightsScreen() {
                   <AppText variant="bodyStrong" style={styles.flex}>
                     {localized(SCAM_TYPES[type].label)}
                   </AppText>
-                  <AppText variant="label" color={colors.textMuted}>
-                    {t('activity.reportedTimes', { n: count })}
+                  <AppText variant="label" color={c.textMuted}>
+                    {count}
                   </AppText>
                 </View>
-                <View style={styles.track}>
-                  <View style={[styles.fill, { width: `${Math.max(8, (count / max) * 100)}%` }]} />
-                </View>
+                <Meter value={Math.max(8, (count / max) * 100)} color={c.danger} />
               </View>
             ))}
           </Card>
@@ -64,16 +66,16 @@ export default function InsightsScreen() {
       ) : null}
 
       <SectionHeader title={t('insights.numbers')} />
-      <View style={styles.list}>
+      <View style={styles.stats}>
         {STATS.map((stat) => {
           const source = sourceById(stat.sourceId);
           return (
             <Card key={stat.value + stat.scope} style={styles.stat} onPress={source ? () => open(source.url) : undefined}>
-              <AppText variant="title" color={colors.danger}>
+              <AppText variant="display" color={c.dangerText}>
                 {stat.value}
               </AppText>
               <AppText variant="body">{localized(stat.label)}</AppText>
-              <AppText variant="caption" color={colors.textMuted}>
+              <AppText variant="caption" color={c.textMuted}>
                 {stat.scope}
                 {source ? ` · ${source.publisher}` : ''}
               </AppText>
@@ -83,20 +85,20 @@ export default function InsightsScreen() {
       </View>
 
       <SectionHeader title={t('insights.sources')} />
-      <Card padded={false}>
+      <Card padded={false} style={styles.clip}>
         {SOURCES.map((source, index) => (
           <Pressable
             key={source.id}
             accessibilityRole="link"
             onPress={() => open(source.url)}
-            style={({ pressed }) => [styles.source, index < SOURCES.length - 1 && styles.sourceDivider, pressed && { opacity: 0.7 }]}>
+            style={({ pressed }) => [styles.source, index < SOURCES.length - 1 && styles.divider, pressed && { backgroundColor: c.surface2 }]}>
             <View style={styles.flex}>
               <AppText variant="label">{source.title}</AppText>
-              <AppText variant="caption" color={colors.textMuted}>
+              <AppText variant="caption" color={c.textMuted}>
                 {source.publisher}
               </AppText>
             </View>
-            <Ionicons name="open-outline" size={18} color={colors.textFaint} />
+            <Ionicons name="open-outline" size={18} color={c.textFaint} />
           </Pressable>
         ))}
       </Card>
@@ -104,16 +106,16 @@ export default function InsightsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ c }) => ({
   flex: { flex: 1 },
-  community: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  community: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, padding: spacing.lg, borderRadius: radius.xl, backgroundColor: c.safeSoft },
+  communityIcon: { width: 52, height: 52, borderRadius: 18, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' },
   section: { gap: spacing.lg },
-  bar: { gap: spacing.xs },
+  bar: { gap: spacing.xs + 2 },
   barTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  track: { height: 10, borderRadius: 5, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 5, backgroundColor: colors.danger },
-  list: { gap: spacing.md },
+  stats: { gap: spacing.md },
   stat: { gap: 2 },
+  clip: { overflow: 'hidden' },
   source: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
-  sourceDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
-});
+  divider: { borderBottomWidth: 1, borderBottomColor: c.border },
+}));

@@ -9,7 +9,7 @@ import { screenIncomingCall } from '@/features/calls/guard';
 import { syncCommunity } from '@/features/detection/community';
 import { processIncoming } from '@/features/detection/pipeline';
 import { seedCommunityIntel } from '@/features/demo/seed';
-import { refreshPairingCode, syncFamilyAlerts } from '@/features/family/sync';
+import { syncFamilyAlerts } from '@/features/family/sync';
 import { tNow } from '@/i18n';
 import { refreshSession } from '@/services/api/http';
 import { SatarkNative } from '@/services/native';
@@ -53,12 +53,11 @@ export function AppBridge() {
     else SatarkNative.startProtectionService(tNow('home.protected'), tNow('home.protected.sub'));
   }, [onboarded, paused, lang]);
 
-  // With a backend: the live connection, alerts about the family, and the server's pairing code.
+  // With a backend: the live connection and alerts about the family.
   useEffect(() => {
     if (!onboarded || !hasBackend) return;
     connectRealtime();
     void syncFamilyAlerts();
-    void refreshPairingCode();
   }, [onboarded, role]);
 
   useEffect(() => {

@@ -1,17 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useProtection } from '@/hooks/useProtection';
 import { useT, type StringKey } from '@/i18n';
 import { SatarkNative } from '@/services/native';
 import { initNotifications } from '@/services/notifications';
 import { speak } from '@/services/voice';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
 
 import { AppText } from './ui/AppText';
 import { Button, type IconName } from './ui/Button';
-import { Card } from './ui/Card';
 import { IconBadge } from './ui/primitives';
 
 type PermissionId = 'notif' | 'calls' | 'overlay' | 'battery' | 'alerts';
@@ -38,6 +37,8 @@ const PERMISSIONS: PermissionDef[] = [
  */
 export function PermissionsList() {
   const t = useT();
+  const styles = useStyles();
+  const { c } = useTheme();
   const { status, nativeAvailable, refresh } = useProtection();
   const [alertsGranted, setAlertsGranted] = useState(false);
 
@@ -50,7 +51,7 @@ export function PermissionsList() {
   };
 
   const request = async (id: PermissionId) => {
-    speak(t(`onb.perm.${id}.body` as StringKey));
+    void speak(t(`onb.perm.${id}.body` as StringKey));
     switch (id) {
       case 'notif':
         SatarkNative.openNotificationAccessSettings();
@@ -77,56 +78,45 @@ export function PermissionsList() {
         const isGranted = granted[p.id];
         const unavailable = p.native && !nativeAvailable;
         return (
-          <Card key={p.id} style={styles.card} tone={isGranted ? { main: colors.safe, soft: colors.safeSoft } : undefined}>
-            <View style={styles.top}>
-              <IconBadge
-                name={p.icon}
-                color={isGranted ? colors.safe : colors.brandBright}
-                soft={isGranted ? colors.surface : colors.brandSoft}
-              />
-              <View style={styles.flex}>
-                <AppText variant="bodyStrong">{t(`onb.perm.${p.id}.title` as StringKey)}</AppText>
-                <AppText variant="label" color={colors.textMuted}>
-                  {t(`onb.perm.${p.id}.body` as StringKey)}
-                </AppText>
-              </View>
+          <View key={p.id} style={[styles.card, isGranted && styles.cardGranted]}>
+            <IconBadge name={p.icon} size={44} color={isGranted ? c.safeText : c.accentText} soft={isGranted ? c.safeSoft : c.accentSoft} />
+            <View style={styles.body}>
+              <AppText variant="bodyStrong">{t(`onb.perm.${p.id}.title` as StringKey)}</AppText>
+              <AppText variant="label" color={c.textMuted}>
+                {t(`onb.perm.${p.id}.body` as StringKey)}
+              </AppText>
+              {isGranted ? (
+                <View style={styles.status}>
+                  <Ionicons name="checkmark-circle" size={18} color={c.safeText} />
+                  <AppText variant="label" color={c.safeText} style={styles.bold}>
+                    {t('onb.perm.allowed')}
+                  </AppText>
+                </View>
+              ) : unavailable ? (
+                <View style={styles.status}>
+                  <Ionicons name="phone-portrait-outline" size={16} color={c.textMuted} />
+                  <AppText variant="caption" color={c.textMuted} style={styles.flex}>
+                    {t('onb.perm.needsApp')}
+                  </AppText>
+                </View>
+              ) : (
+                <Button label={t('onb.perm.allow')} variant="tonal" size="sm" onPress={() => request(p.id)} style={styles.allow} />
+              )}
             </View>
-            {isGranted ? (
-              <View style={styles.granted}>
-                <Ionicons name="checkmark-circle" size={22} color={colors.safe} />
-                <AppText variant="label" color={colors.safeDeep}>
-                  {t('onb.perm.allowed')}
-                </AppText>
-              </View>
-            ) : unavailable ? (
-              <View style={styles.unavailable}>
-                <Ionicons name="phone-portrait-outline" size={18} color={colors.textMuted} />
-                <AppText variant="caption" color={colors.textMuted} style={styles.flex}>
-                  {t('onb.perm.needsApp')}
-                </AppText>
-              </View>
-            ) : (
-              <Button label={t('onb.perm.allow')} variant="secondary" onPress={() => request(p.id)} />
-            )}
-          </Card>
+          </View>
         );
       })}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ c }) => ({
   flex: { flex: 1 },
-  list: { gap: spacing.md },
-  card: { gap: spacing.md },
-  top: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  granted: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  unavailable: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-  },
-});
+  bold: { fontWeight: '700' },
+  list: { gap: spacing.sm + 2 },
+  card: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
+  cardGranted: { borderColor: c.safe + '55' },
+  body: { flex: 1, gap: spacing.xs },
+  status: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
+  allow: { alignSelf: 'flex-start', marginTop: spacing.xs },
+}));

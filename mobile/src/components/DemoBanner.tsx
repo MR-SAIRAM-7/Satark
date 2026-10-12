@@ -1,38 +1,40 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useSettings } from '@/store/settings';
-import { colors, spacing } from '@/theme/tokens';
+import { makeStyles, spacing, useTheme } from '@/theme/tokens';
 
 import { AppText } from './ui/AppText';
 
 /** Always visible in demo mode, so nobody mistakes a practice screen for the real thing. */
-export function DemoBanner() {
+export function DemoBanner({ onDark }: { onDark?: boolean }) {
   const demoMode = useSettings((s) => s.demoMode);
   const t = useT();
+  const { c } = useTheme();
+  const styles = useStyles();
   if (!demoMode) return null;
+  const color = onDark ? '#FFD38A' : c.warnText;
   return (
-    <View style={styles.banner} accessibilityRole="alert">
-      <Ionicons name="flask" size={14} color={colors.warnDeep} />
-      <AppText variant="caption" color={colors.warnDeep} numberOfLines={1} style={styles.text}>
+    <View style={[styles.banner, onDark && styles.onDark]} accessibilityRole="alert">
+      <View style={[styles.dot, { backgroundColor: color }]} />
+      <AppText variant="caption" color={color} numberOfLines={1} style={styles.text}>
         {t('demo.banner')}
       </AppText>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ c }) => ({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
     paddingVertical: 5,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.warnSoft,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F4D9A6',
+    backgroundColor: c.warnSoft,
   },
-  text: { fontWeight: '700', flexShrink: 1 },
-});
+  onDark: { backgroundColor: 'rgba(0,0,0,0.22)' },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  text: { flexShrink: 1, letterSpacing: 0.2 },
+}));

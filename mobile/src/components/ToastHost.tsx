@@ -1,51 +1,47 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
-import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInUp, FadeOutDown } from 'react-native-reanimated';
 
+import { useTabBarSpace } from '@/components/ui/Screen';
 import { useUi } from '@/store/ui';
-import { colors, radius, shadow, spacing } from '@/theme/tokens';
+import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
 
 import { AppText } from './ui/AppText';
 
-const TONES = {
-  info: { bg: colors.brandDeep, icon: 'information-circle' },
-  safe: { bg: colors.safeDeep, icon: 'checkmark-circle' },
-  warn: { bg: colors.warnDeep, icon: 'alert-circle' },
-} as const;
-
-/** Brief confirmations ("Copied", "Reported"). Mounted once at the root. */
+/** Brief confirmations ("Copied", "Reported"): a floating capsule. Mounted once at the root. */
 export function ToastHost() {
   const toast = useUi((s) => s.toast);
   const hide = useUi((s) => s.hideToast);
-  const insets = useSafeAreaInsets();
+  const bottom = useTabBarSpace();
+  const styles = useStyles();
+  const { c, shadow } = useTheme();
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(hide, 3200);
+    const timer = setTimeout(hide, 3400);
     return () => clearTimeout(timer);
   }, [toast, hide]);
 
   if (!toast) return null;
-  const tone = TONES[toast.tone];
+  const icon = toast.tone === 'safe' ? 'checkmark-circle' : toast.tone === 'warn' ? 'alert-circle' : 'information-circle';
+  const color = toast.tone === 'safe' ? c.safeText : toast.tone === 'warn' ? c.warnText : c.accentText;
   return (
     <Animated.View
       key={toast.id}
-      entering={FadeInDown.duration(220)}
-      exiting={FadeOutDown.duration(180)}
+      entering={FadeInUp.springify().damping(18)}
+      exiting={FadeOutDown.duration(160)}
       pointerEvents="none"
       accessibilityLiveRegion="polite"
-      style={[styles.toast, { backgroundColor: tone.bg, bottom: insets.bottom + 96 }]}>
-      <Ionicons name={tone.icon} size={22} color={colors.textOnDark} />
-      <AppText variant="label" color={colors.textOnDark} style={styles.text}>
+      style={[styles.toast, shadow.float, { bottom: bottom + spacing.sm }]}>
+      <Ionicons name={icon} size={22} color={color} />
+      <AppText variant="label" style={styles.text}>
         {toast.text}
       </AppText>
     </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ c }) => ({
   toast: {
     position: 'absolute',
     alignSelf: 'center',
@@ -56,8 +52,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
-    ...shadow.raised,
+    borderRadius: radius.pill,
+    backgroundColor: c.chrome,
+    borderWidth: 1,
+    borderColor: c.borderStrong,
   },
-  text: { flexShrink: 1 },
-});
+  text: { flexShrink: 1, fontWeight: '600' },
+}));

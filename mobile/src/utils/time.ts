@@ -1,4 +1,4 @@
-import type { Translate } from '@/i18n';
+import type { StringKey, Translate } from '@/i18n';
 
 /** "Just now", "5m", "3h", "2d" - short enough for a list row in any language. */
 export function timeAgo(at: number, t: Translate, now = Date.now()): string {
@@ -16,4 +16,10 @@ export function clockTime(at: number): string {
 
 export function dayAndTime(at: number): string {
   return new Date(at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+/** "Good morning" / "Good afternoon" / "Good evening" for the home screens. */
+export function greetingKey(now = new Date()): StringKey {
+  const hour = now.getHours();
+  return hour < 12 ? 'home.morning' : hour < 17 ? 'home.afternoon' : 'home.evening';
 }

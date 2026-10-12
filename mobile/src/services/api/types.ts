@@ -131,8 +131,8 @@ export interface SatarkApi {
   /** Acknowledge a family alert: stops the server escalating it. */
   ackAlert(serverId: string): Promise<void>;
 
-  /** The elder's current pairing code, issued by the server. Null when there is no backend. */
-  pairingCode(): Promise<string | null>;
+  /** A fresh one-time pairing code for the elder, issued by the server. Null when there is no backend or it is unreachable. */
+  pairingCode(): Promise<{ code: string; expiresAt: number } | null>;
 
   /** Link this guardian or Home Guardian phone to an elder with their code. */
   linkFamily(code: string): Promise<{ name: string } | 'invalid' | null>;

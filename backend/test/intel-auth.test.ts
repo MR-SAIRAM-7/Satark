@@ -129,4 +129,22 @@ describe('guardian pairing', () => {
     // Codes are single use.
     await api().post('/v1/guardian/link').set(bearer(guardian.token)).send({ code: body.code }).expect(404);
   });
+
+  it('makes codes that last five minutes, and a new code replaces the old one', async () => {
+    const elder = await signIn('+919123400020', { name: 'Kamala' });
+    const guardian = await signIn('+919123400021', { role: 'guardian' });
+    const first = await api().post('/v1/guardian/code').set(bearer(elder.token)).expect(200);
+    expect(first.body.ttl_seconds).toBe(300);
+    expect(first.body.expires_at - Date.now()).toBeLessThanOrEqual(300_000);
+    expect(first.body.expires_at - Date.now()).toBeGreaterThan(290_000);
+
+    const second = await api().post('/v1/guardian/code').set(bearer(elder.token)).expect(200);
+    if (second.body.code !== first.body.code) {
+      await api().post('/v1/guardian/link').set(bearer(guardian.token)).send({ code: first.body.code }).expect(404);
+    }
+
+    // Past its five minutes, the code no longer links anyone.
+    await User.updateOne({ _id: elder.user.id }, { pairingExpires: new Date(Date.now() - 1000) });
+    await api().post('/v1/guardian/link').set(bearer(guardian.token)).send({ code: second.body.code }).expect(404);
+  });
 });

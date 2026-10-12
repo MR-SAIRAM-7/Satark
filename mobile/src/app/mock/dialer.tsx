@@ -3,6 +3,7 @@ import { buildScript } from '@satark/shared';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DemoBanner } from '@/components/DemoBanner';
@@ -13,7 +14,7 @@ import { advanceStage } from '@/features/complaint/tracker';
 import { useT } from '@/i18n';
 import { selectComplaint, useComplaints } from '@/store/complaints';
 import { useSettings } from '@/store/settings';
-import { colors, MAX_CONTENT_WIDTH, radius, spacing } from '@/theme/tokens';
+import { MAX_CONTENT_WIDTH, radius, spacing } from '@/theme/tokens';
 
 /**
  * Practice dialer (F8). In demo mode every call to 1930 or a bank lands here
@@ -47,23 +48,23 @@ export default function MockDialer() {
   const clock = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.lg }]}>
-      <DemoBanner />
+    <LinearGradient colors={['#141C3A', '#05070F']} style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.lg }]}>
+      <DemoBanner onDark />
       <View style={styles.content}>
         <View style={styles.note}>
-          <Ionicons name="flask" size={16} color={colors.warnBright} />
-          <AppText variant="label" color={colors.warnBright}>
+          <Ionicons name="flask" size={16} color={'#FFB547'} />
+          <AppText variant="label" color={'#FFB547'}>
             {t('mock.dialer.note')}
           </AppText>
         </View>
 
         <View style={styles.avatar}>
-          <Ionicons name="call" size={44} color={colors.textOnDark} />
+          <Ionicons name="call" size={44} color={'#FFFFFF'} />
         </View>
-        <AppText variant="title" color={colors.textOnDark} center>
+        <AppText variant="title" color={'#FFFFFF'} center>
           {params.name ?? t('mock.dialer.title')}
         </AppText>
-        <AppText variant="display" color={colors.textOnDark} center>
+        <AppText variant="hero" color={'#FFFFFF'} center>
           {params.number}
         </AppText>
         <AppText variant="heading" color={connected ? '#7CE0A6' : 'rgba(255,255,255,0.7)'} center>
@@ -72,7 +73,7 @@ export default function MockDialer() {
 
         {script.length > 0 ? (
           <View style={styles.script}>
-            <AppText variant="bodyStrong" color={colors.textOnDark}>
+            <AppText variant="bodyStrong" color={'#FFFFFF'}>
               {t('kit.script')}
             </AppText>
             {script.map((line, index) => (
@@ -87,12 +88,12 @@ export default function MockDialer() {
       <View style={styles.footer}>
         <Button testID="dialer-end" label={t('mock.dialer.end')} icon="call" variant="danger" size="lg" onPress={goBack} />
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.brandDeep },
+  root: { flex: 1 },
   content: { flex: 1, width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl },
   note: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: 'rgba(245,158,11,0.16)', marginBottom: spacing.lg },
   avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },

@@ -56,11 +56,21 @@ export async function syncFamilyAlerts(): Promise<void> {
   if (alerts) useAlerts.getState().mergeServer(alerts.map(toGuardianAlert));
 }
 
-/** The elder's pairing code comes from the server, which checks it when the guardian types it. */
-export async function refreshPairingCode(): Promise<void> {
-  if (useSettings.getState().role !== 'elder') return;
-  const code = await api.pairingCode();
-  if (code) useSettings.getState().update({ pairingCode: code });
+/** How long a pairing code works (the server enforces the same limit). */
+export const PAIRING_MINUTES = 5;
+
+/**
+ * A fresh one-time pairing code, made when the elder asks for it. With the
+ * server, the server issues and checks it; without one, the code is only for
+ * show, since there is nothing to link to. Null when the server is unreachable.
+ */
+export async function newPairingCode(): Promise<{ code: string; expiresAt: number } | null> {
+  const fresh =
+    api.mode === 'backend'
+      ? await api.pairingCode()
+      : { code: String(Math.floor(100000 + Math.random() * 900000)), expiresAt: Date.now() + PAIRING_MINUTES * 60_000 };
+  if (fresh) useSettings.getState().update({ pairingCode: fresh.code, pairingExpiresAt: fresh.expiresAt });
+  return fresh;
 }
 
 /** Link this guardian or Home Guardian phone to the elder whose code was typed in. */

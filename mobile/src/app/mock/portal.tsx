@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { dateTime, formatInr, SCAM_TYPES } from '@satark/shared';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
@@ -13,22 +13,24 @@ import { demoAckNumber, saveAcknowledgement } from '@/features/complaint/tracker
 import { useT } from '@/i18n';
 import { selectComplaint, useComplaints } from '@/store/complaints';
 import { useSettings } from '@/store/settings';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
 
 type Step = 'form' | 'otp' | 'done';
 
 function Filled({ label, value }: { label: string; value: string }) {
+  const styles = useStyles();
+  const { c } = useTheme();
   return (
     <View style={styles.filled}>
-      <AppText variant="caption" color={colors.textMuted}>
+      <AppText variant="caption" color={c.textMuted}>
         {label}
       </AppText>
       <AppText variant="label" numberOfLines={4}>
         {value}
       </AppText>
       <View style={styles.auto}>
-        <Ionicons name="flash" size={12} color={colors.safeDeep} />
-        <AppText variant="caption" color={colors.safeDeep}>
+        <Ionicons name="flash" size={12} color={c.safeText} />
+        <AppText variant="caption" color={c.safeText}>
           Filled by Satark
         </AppText>
       </View>
@@ -44,6 +46,8 @@ function Filled({ label, value }: { label: string; value: string }) {
  */
 export default function MockPortal() {
   const t = useT();
+  const styles = useStyles();
+  const { c } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const complaint = useComplaints(selectComplaint(id));
   const elder = useSettings((s) => s.elder);
@@ -81,8 +85,8 @@ export default function MockPortal() {
         )
       }>
       <View style={styles.note}>
-        <Ionicons name="flask" size={18} color={colors.warnDeep} />
-        <AppText variant="label" color={colors.warnDeep} style={styles.flex}>
+        <Ionicons name="flask" size={18} color={c.warnText} />
+        <AppText variant="label" color={c.warnText} style={styles.flex}>
           {t('mock.portal.note')}
         </AppText>
       </View>
@@ -110,7 +114,7 @@ export default function MockPortal() {
       {step === 'otp' ? (
         <Card style={styles.section}>
           <AppText variant="heading">{t('mock.portal.otp')}</AppText>
-          <AppText variant="label" color={colors.textMuted}>
+          <AppText variant="label" color={c.textMuted}>
             {t('fir.noAutoSubmit')}
           </AppText>
           <Field testID="portal-otp" value={otp} onChangeText={setOtp} keyboardType="number-pad" maxLength={6} placeholder="• • • • • •" autoFocus />
@@ -118,12 +122,12 @@ export default function MockPortal() {
       ) : null}
 
       {step === 'done' ? (
-        <Card tone={{ main: colors.safe, soft: colors.safeSoft }} style={styles.done}>
-          <Ionicons name="checkmark-circle" size={64} color={colors.safe} />
-          <AppText variant="heading" center color={colors.safeDeep}>
+        <Card tone={{ main: c.safe, soft: c.safeSoft }} style={styles.done}>
+          <Ionicons name="checkmark-circle" size={64} color={c.safeText} />
+          <AppText variant="heading" center color={c.safeText}>
             {t('mock.portal.done')}
           </AppText>
-          <AppText variant="label" color={colors.textMuted}>
+          <AppText variant="label" color={c.textMuted}>
             {t('kit.ack')}
           </AppText>
           <AppText variant="title" selectable>
@@ -135,11 +139,11 @@ export default function MockPortal() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ c }) => ({
   flex: { flex: 1 },
-  note: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.warnSoft },
+  note: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, backgroundColor: c.warnSoft },
   section: { gap: spacing.md },
-  filled: { gap: 2, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
+  filled: { gap: 2, paddingBottom: spacing.sm + 2, borderBottomWidth: 1, borderBottomColor: c.border },
   auto: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   done: { alignItems: 'center', gap: spacing.sm },
-});
+}));
