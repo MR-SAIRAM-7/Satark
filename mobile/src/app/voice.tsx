@@ -94,11 +94,18 @@ export default function VoiceScreen() {
               onPress={() => test(l.code)}
               disabled={Boolean(playing)}
               style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}>
-              <View>
-                <AppText variant="heading">{l.native}</AppText>
-                <AppText variant="caption" color={c.textMuted}>
-                  {l.english}
-                </AppText>
+              <View style={styles.tileTop}>
+                <View style={styles.flex}>
+                  <AppText variant="heading">
+                    {l.native}
+                  </AppText>
+                  <AppText variant="caption" color={c.textMuted}>
+                    {l.english}
+                  </AppText>
+                </View>
+                <View style={[styles.play, { backgroundColor: ready ? c.accent : c.surface3 }]}>
+                  {busy ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons name="play" size={17} color={ready ? '#FFFFFF' : c.textMuted} />}
+                </View>
               </View>
               <View style={styles.tileBottom}>
                 {used ? (
@@ -115,9 +122,6 @@ export default function VoiceScreen() {
                     soft={c.surface2}
                   />
                 )}
-                <View style={[styles.play, { backgroundColor: ready ? c.accent : c.surface3 }]}>
-                  {busy ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons name="play" size={17} color={ready ? '#FFFFFF' : c.textMuted} />}
-                </View>
               </View>
             </Pressable>
           );
@@ -149,7 +153,8 @@ const useStyles = makeStyles(({ c }) => ({
     borderColor: c.border,
   },
   tilePressed: { backgroundColor: c.surface2, transform: [{ scale: 0.97 }] },
-  tileBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  tileTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  tileBottom: { flexDirection: 'row', alignItems: 'center' },
   play: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   tip: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, backgroundColor: c.surface2 },
 }));

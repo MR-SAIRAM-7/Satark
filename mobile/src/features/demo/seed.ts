@@ -4,9 +4,7 @@ import { SAMPLES } from '@/data/samples';
 import { syncNativeBlocklist } from '@/features/detection/community';
 import { processIncoming } from '@/features/detection/pipeline';
 import { hashIndicator, maskIndicator } from '@/services/hash';
-import { useAlerts, useDrills, useIntel } from '@/store/activity';
-import { useChecks } from '@/store/checks';
-import { useComplaints } from '@/store/complaints';
+import { useIntel } from '@/store/activity';
 import type { CommunityIoc } from '@/types';
 
 import { KNOWN_SCAM_CALLER } from './scenarios';
@@ -66,14 +64,4 @@ export async function loadSampleHistory(): Promise<void> {
       { silent: true, userInitiated: !sample.isScam },
     );
   }
-}
-
-/** Wipe everything the demo created, then restore the community blocklist. */
-export async function resetDemoData(): Promise<void> {
-  useChecks.getState().clear();
-  useAlerts.getState().clear();
-  useComplaints.getState().clear();
-  useDrills.getState().clear();
-  useIntel.getState().clear();
-  await seedCommunityIntel();
 }

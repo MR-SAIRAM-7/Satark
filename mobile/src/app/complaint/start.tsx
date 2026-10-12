@@ -137,10 +137,15 @@ export default function StartComplaint() {
         </View>
       ) : (
         <View style={styles.hint}>
-          <Ionicons name="information-circle" size={20} color={c.accentText} />
-          <AppText variant="label" color={c.textMuted} style={styles.flex}>
-            {t('start.noAlerts')}
-          </AppText>
+          <View style={styles.hintIcon}>
+            <Ionicons name="create" size={22} color={c.onFill} />
+          </View>
+          <View style={styles.flex}>
+            <AppText variant="bodyStrong">{t('start.describe')}</AppText>
+            <AppText variant="label" color={c.textMuted}>
+              {t('start.noAlerts')}
+            </AppText>
+          </View>
         </View>
       )}
 
@@ -231,5 +236,6 @@ const useStyles = makeStyles(({ c }) => ({
   pressed: { transform: [{ scale: 0.97 }] },
   or: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
   rule: { flex: 1, height: 1, backgroundColor: c.border },
-  hint: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md + 2, borderRadius: radius.md, backgroundColor: c.accentSoft },
+  hint: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: c.accentSoft },
+  hintIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' },
 }));

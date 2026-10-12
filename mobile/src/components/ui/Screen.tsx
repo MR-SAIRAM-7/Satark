@@ -4,6 +4,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DemoBanner } from '@/components/DemoBanner';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { makeStyles, MAX_CONTENT_WIDTH, spacing, TAB_BAR_HEIGHT, useTheme } from '@/theme/tokens';
 
 import { AppText } from './AppText';
@@ -64,22 +65,26 @@ export function Screen({
   const content = (
     <Animated.View entering={FadeIn.duration(220)} style={[styles.content, contentStyle]}>
       {title || eyebrow ? (
-        <View style={styles.titleBlock}>
-          {eyebrow ? (
-            <AppText variant="overline" color={c.accentText}>
-              {eyebrow}
-            </AppText>
-          ) : null}
-          {title ? (
-            <AppText variant={inTabs ? 'display' : 'title'} accessibilityRole="header">
-              {title}
-            </AppText>
-          ) : null}
-          {subtitle ? (
-            <AppText variant="label" color={c.textMuted}>
-              {subtitle}
-            </AppText>
-          ) : null}
+        <View style={styles.titleRow}>
+          <View style={styles.titleBlock}>
+            {eyebrow ? (
+              <AppText variant="overline" color={c.accentText}>
+                {eyebrow}
+              </AppText>
+            ) : null}
+            {title ? (
+              <AppText variant={inTabs ? 'display' : 'title'} accessibilityRole="header">
+                {title}
+              </AppText>
+            ) : null}
+            {subtitle ? (
+              <AppText variant="label" color={c.textMuted}>
+                {subtitle}
+              </AppText>
+            ) : null}
+          </View>
+          {/* Light or dark is one tap away on every tab. */}
+          {inTabs ? <ThemeToggle /> : null}
         </View>
       ) : null}
       {children}
@@ -136,7 +141,8 @@ const useStyles = makeStyles(({ c }) => ({
     alignSelf: 'center',
   },
   right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  titleBlock: { gap: spacing.xs, paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  titleBlock: { flex: 1, gap: spacing.xs, paddingTop: spacing.sm, paddingBottom: spacing.xs },
   scrollContent: { flexGrow: 1 },
   content: {
     flex: 1,

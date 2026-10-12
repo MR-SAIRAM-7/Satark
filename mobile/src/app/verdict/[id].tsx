@@ -1,13 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { analyzeLocal, getRule, maskPhone, SCAM_TYPES, voiceLineFor, type RuleHit } from '@satark/shared';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import Animated, { ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { KillChainMeter } from '@/components/KillChainMeter';
 import { AppText } from '@/components/ui/AppText';
-import { Button, IconButton, tapFeedback, type IconName } from '@/components/ui/Button';
+import { Button, tapFeedback, type IconName } from '@/components/ui/Button';
 import { EmptyState, Meter, Pill } from '@/components/ui/primitives';
 import { goBack } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
@@ -23,8 +24,10 @@ import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
 import { dayAndTime } from '@/utils/time';
 
 const LAYERS = ['rules', 'killChain', 'community', 'ml', 'ai'] as const;
-/** Reasons shown before "more": enough to understand, few enough to read in one breath. */
-const TOP_REASONS = 3;
+/** Warning signs shown at once: enough to understand, few enough to read in one breath. */
+const TOP_SIGNS = 3;
+/** Steps shown: the first three are the ones that matter in the moment. */
+const TOP_STEPS = 3;
 
 function ActionTile({ icon, label, onPress, disabled, testID }: { icon: IconName; label: string; onPress: () => void; disabled?: boolean; testID?: string }) {
   const styles = useStyles();
@@ -41,8 +44,8 @@ function ActionTile({ icon, label, onPress, disabled, testID }: { icon: IconName
         onPress();
       }}
       style={({ pressed }) => [styles.tile, pressed && styles.tilePressed, disabled && styles.tileDisabled]}>
-      <Ionicons name={icon} size={22} color={c.accentText} />
-      <AppText variant="caption" center numberOfLines={2} style={styles.tileLabel}>
+      <Ionicons name={icon} size={20} color={c.accentText} />
+      <AppText variant="caption" center numberOfLines={1} style={styles.tileLabel}>
         {label}
       </AppText>
     </Pressable>
@@ -50,9 +53,11 @@ function ActionTile({ icon, label, onPress, disabled, testID }: { icon: IconName
 }
 
 /**
- * The alert pop-up (F3). It leads with the verdict and, straight after, the
- * reason in plain words; then what to do. Everything technical (the message,
- * the Kill Chain evidence, the layer scores) is one tap away, not in the way.
+ * The alert pop-up (F3). Read top to bottom it answers three questions, in
+ * this order and nothing else: what is it (the coloured band), why (one plain
+ * paragraph and the warning signs Satark found), and what do I do (three
+ * steps and one big button). The message itself, the Kill Chain evidence and
+ * the layer scores are folded away under "details".
  */
 export default function VerdictScreen() {
   const t = useT();
@@ -67,7 +72,8 @@ export default function VerdictScreen() {
   const safeWord = useSettings((s) => s.safeWord);
   const showToast = useUi((s) => s.showToast);
   const [communityReports, setCommunityReports] = useState(0);
-  const [allReasons, setAllReasons] = useState(false);
+  const [openSign, setOpenSign] = useState<string | null>(null);
+  const [allSigns, setAllSigns] = useState(false);
   const [details, setDetails] = useState(false);
 
   // Cheap, synchronous re-read of the message for the brand and link details the rules matched.
@@ -102,12 +108,12 @@ export default function VerdictScreen() {
   const realEntry = entryForBrand(brand?.id) ?? (local.signals.authority ? HELPLINE_1930 : undefined);
   const askSafeWord = response.rules.some((r) => r.id === 'R16');
 
-  const reasonText = (hit: RuleHit, field: 'title' | 'why') => {
+  const ruleText = (hit: RuleHit, field: 'title' | 'why') => {
     const rule = getRule(hit.id);
     return rule ? localized(rule[field]).replace('{brand}', brand?.name ?? '') : hit.id;
   };
-  const reasons = allReasons ? response.rules : response.rules.slice(0, TOP_REASONS);
-  const hidden = response.rules.length - reasons.length;
+  const signs = allSigns ? response.rules : response.rules.slice(0, TOP_SIGNS);
+  const hiddenSigns = response.rules.length - signs.length;
 
   const replay = () => speak(`${voiceLineFor(verdict, scam_type, lang)} ${explanation}`, { force: true });
   const report = async () => {
@@ -116,6 +122,42 @@ export default function VerdictScreen() {
   };
   const complaint = () => router.push({ pathname: '/complaint/[id]', params: { id: 'new', checkId: check.id } });
   const callReal = () => (realEntry ? dial(realEntry.number, { name: realEntry.name }) : router.push('/directory'));
+
+  // 1. What is it: the verdict colour, edge to edge, with the risk score.
+  const header = (
+    <LinearGradient colors={look.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.band}>
+      <View style={styles.bandTop}>
+        <Animated.View entering={ZoomIn.duration(320)} style={styles.bandIcon}>
+          <Ionicons name={look.icon} size={26} color="#FFFFFF" />
+        </Animated.View>
+        <AppText variant="overline" color="rgba(255,255,255,0.9)" style={styles.flex}>
+          {t(`verdict.${verdict}` as StringKey)}
+        </AppText>
+        {risky ? (
+          <View style={styles.score} accessibilityLabel={t('verdict.risk', { score })}>
+            <AppText variant="heading" color="#FFFFFF" style={styles.scoreValue}>
+              {score}
+            </AppText>
+            <AppText variant="caption" color="rgba(255,255,255,0.8)">
+              /100
+            </AppText>
+          </View>
+        ) : null}
+        <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} hitSlop={10} onPress={goBack} style={styles.close}>
+          <Ionicons name="close" size={20} color="#FFFFFF" />
+        </Pressable>
+      </View>
+      <AppText testID="verdict-title" variant="title" color="#FFFFFF" accessibilityRole="header">
+        {risky ? localized(SCAM_TYPES[scam_type].label) : t('verdict.safe')}
+      </AppText>
+      <View style={styles.bandSub}>
+        <Ionicons name={risky ? 'hand-left' : 'checkmark-circle'} size={18} color="#FFFFFF" />
+        <AppText variant="bodyStrong" color="#FFFFFF" style={styles.flex}>
+          {t(`verdict.${verdict}.sub` as StringKey)}
+        </AppText>
+      </View>
+    </LinearGradient>
+  );
 
   const footer = risky ? (
     <>
@@ -148,34 +190,10 @@ export default function VerdictScreen() {
   );
 
   return (
-    <Sheet onClose={goBack} footer={footer} testID="verdict-sheet">
-      {/* 1. The verdict. */}
-      <View style={styles.header}>
-        <Animated.View entering={ZoomIn.duration(300)} style={[styles.badge, { backgroundColor: look.soft }]}>
-          <Ionicons name={look.icon} size={34} color={look.text} />
-        </Animated.View>
-        <View style={styles.headerText}>
-          <AppText variant="overline" color={look.text}>
-            {t(`verdict.${verdict}` as StringKey)}
-            {risky ? ` · ${t('verdict.riskShort', { score })}` : ''}
-          </AppText>
-          <AppText testID="verdict-title" variant="title" accessibilityRole="header">
-            {risky ? localized(SCAM_TYPES[scam_type].label) : t('verdict.safe')}
-          </AppText>
-        </View>
-        <IconButton icon="close" label={t('common.close')} size={40} onPress={goBack} />
-      </View>
-
-      <View style={[styles.verdictLine, { backgroundColor: look.soft }]}>
-        <Ionicons name={risky ? 'hand-left' : 'checkmark-circle'} size={22} color={look.text} />
-        <AppText variant="bodyStrong" color={look.text} style={styles.flex}>
-          {t(`verdict.${verdict}.sub` as StringKey)}
-        </AppText>
-      </View>
-
+    <Sheet onClose={goBack} header={header} footer={footer} testID="verdict-sheet">
       {response.injection_attempt ? (
         <View style={[styles.notice, { backgroundColor: c.dangerSoft }]}>
-          <Ionicons name="bug" size={20} color={c.dangerText} />
+          <Ionicons name="bug" size={18} color={c.dangerText} />
           <View style={styles.flex}>
             <AppText testID="injection-banner" variant="bodyStrong" color={c.dangerText}>
               {t('verdict.injection')}
@@ -187,99 +205,98 @@ export default function VerdictScreen() {
         </View>
       ) : null}
 
-      {/* 2. Why: the explanation in one plain paragraph, then the signals that proved it. */}
+      {/* 2. Why: the reason in one plain paragraph, then the signs that prove it. */}
       <View style={styles.section}>
         <AppText variant="overline" color={c.textMuted}>
           {t('verdict.why')}
         </AppText>
-        <AppText variant="body">{explanation}</AppText>
-        {reasons.length > 0 ? (
-          <View style={styles.reasons}>
-            {reasons.map((hit, index) => (
-              <View key={hit.id} style={[styles.reason, index > 0 && styles.reasonDivider]}>
-                <View style={[styles.reasonDot, { backgroundColor: look.fill }]}>
-                  <AppText variant="caption" color="#FFFFFF" style={styles.reasonNumber}>
-                    {index + 1}
-                  </AppText>
-                </View>
-                <View style={styles.flex}>
-                  <AppText variant="bodyStrong">{reasonText(hit, 'title')}</AppText>
-                  <AppText variant="label" color={c.textMuted}>
-                    {reasonText(hit, 'why')}
-                  </AppText>
-                </View>
-              </View>
-            ))}
-            {communityReports > 0 ? (
-              <View style={[styles.reason, styles.reasonDivider]}>
-                <View style={[styles.reasonDot, { backgroundColor: look.fill }]}>
-                  <Ionicons name="people" size={13} color="#FFFFFF" />
-                </View>
-                <AppText variant="bodyStrong" style={styles.flex}>
-                  {t('verdict.community', { n: communityReports })}
-                </AppText>
-              </View>
-            ) : null}
-            {hidden > 0 || allReasons ? (
-              <Pressable accessibilityRole="button" onPress={() => setAllReasons((v) => !v)} style={styles.more}>
-                <AppText variant="label" color={c.accentText}>
-                  {allReasons ? t('verdict.fewerReasons') : t('verdict.moreReasons', { n: hidden })}
-                </AppText>
-                <Ionicons name={allReasons ? 'chevron-up' : 'chevron-down'} size={16} color={c.accentText} />
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
+        <AppText variant="body" style={styles.explanation}>
+          {explanation}
+        </AppText>
       </View>
 
-      {risky && stage > 0 ? (
-        <View style={styles.section}>
-          <AppText variant="overline" color={c.textMuted}>
-            {t('verdict.killchain.sub')}
-          </AppText>
-          <KillChainMeter stage={stage} evidence={evidence} tone={look.fill} compact />
+      {signs.length > 0 || communityReports > 0 ? (
+        <View style={styles.signs}>
+          {signs.map((hit, index) => {
+            const open = openSign === hit.id;
+            return (
+              <Pressable
+                key={hit.id}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: open }}
+                onPress={() => setOpenSign(open ? null : hit.id)}
+                style={[styles.sign, index > 0 && styles.divided]}>
+                <View style={[styles.signMark, { backgroundColor: look.soft }]}>
+                  <Ionicons name={risky ? 'alert' : 'checkmark'} size={14} color={look.text} />
+                </View>
+                <View style={styles.flex}>
+                  <AppText variant="bodyStrong">{ruleText(hit, 'title')}</AppText>
+                  {open ? (
+                    <Animated.View entering={FadeIn.duration(160)}>
+                      <AppText variant="label" color={c.textMuted}>
+                        {ruleText(hit, 'why')}
+                      </AppText>
+                    </Animated.View>
+                  ) : null}
+                </View>
+                <Ionicons name={open ? 'chevron-up' : 'information-circle-outline'} size={18} color={c.textFaint} />
+              </Pressable>
+            );
+          })}
+          {communityReports > 0 ? (
+            <View style={[styles.sign, signs.length > 0 && styles.divided]}>
+              <View style={[styles.signMark, { backgroundColor: look.soft }]}>
+                <Ionicons name="people" size={13} color={look.text} />
+              </View>
+              <AppText variant="bodyStrong" style={styles.flex}>
+                {t('verdict.community', { n: communityReports })}
+              </AppText>
+            </View>
+          ) : null}
+          {hiddenSigns > 0 || allSigns ? (
+            <Pressable accessibilityRole="button" onPress={() => setAllSigns((v) => !v)} style={[styles.more, styles.divided]}>
+              <AppText variant="label" color={c.accentText}>
+                {allSigns ? t('verdict.fewerReasons') : t('verdict.moreReasons', { n: hiddenSigns })}
+              </AppText>
+              <Ionicons name={allSigns ? 'chevron-up' : 'chevron-down'} size={16} color={c.accentText} />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
-      {/* 3. What to do. */}
+      {/* 3. What to do: three steps, numbered. */}
       {risky && advice.length > 0 ? (
         <View style={styles.section}>
           <AppText variant="overline" color={c.textMuted}>
             {t('verdict.todo')}
           </AppText>
-          {advice.slice(0, 4).map((step, index) => (
-            <View key={step} style={styles.todo}>
-              <View style={[styles.todoNumber, { borderColor: look.fill }]}>
-                <AppText variant="caption" color={look.text} style={styles.reasonNumber}>
-                  {index + 1}
+          <View style={styles.steps}>
+            {advice.slice(0, TOP_STEPS).map((step, index) => (
+              <View key={step} style={styles.step}>
+                <View style={[styles.stepNumber, { backgroundColor: look.fill }]}>
+                  <AppText variant="caption" color="#FFFFFF" style={styles.stepNumberText}>
+                    {index + 1}
+                  </AppText>
+                </View>
+                <AppText variant="bodyStrong" style={styles.flex}>
+                  {step}
                 </AppText>
               </View>
-              <AppText variant="body" style={styles.flex}>
-                {step}
-              </AppText>
-            </View>
-          ))}
-          <Button
-            label={realEntry && brand ? t('verdict.callReal', { brand: brand.name }) : t('verdict.callReal.generic')}
-            icon="business"
-            variant="tonal"
-            onPress={callReal}
-          />
-        </View>
-      ) : null}
-
-      {verdict === 'scam' && guardian ? (
-        <View style={[styles.notice, { backgroundColor: c.safeSoft }]}>
-          <Ionicons name="notifications" size={18} color={c.safeText} />
-          <AppText variant="label" color={c.safeText} style={styles.flex}>
-            {t('verdict.guardianTold', { name: guardian.name })}
-          </AppText>
+            ))}
+          </View>
+          <Pressable accessibilityRole="button" onPress={callReal} style={styles.realLink}>
+            <Ionicons name="business-outline" size={18} color={c.accentText} />
+            <AppText variant="label" color={c.accentText} style={styles.flex}>
+              {realEntry && brand ? t('verdict.callReal', { brand: brand.name }) : t('verdict.callReal.generic')}
+            </AppText>
+            <Ionicons name="chevron-forward" size={16} color={c.accentText} />
+          </Pressable>
         </View>
       ) : null}
 
       {askSafeWord ? (
         <View style={[styles.notice, { backgroundColor: c.warnSoft }]}>
-          <Ionicons name="key" size={20} color={c.warnText} />
+          <Ionicons name="key" size={18} color={c.warnText} />
           <View style={styles.flex}>
             <AppText variant="bodyStrong" color={c.warnText}>
               {t('verdict.safeWord')}
@@ -291,17 +308,26 @@ export default function VerdictScreen() {
         </View>
       ) : null}
 
+      {verdict === 'scam' && guardian ? (
+        <View style={styles.told}>
+          <Ionicons name="notifications" size={16} color={c.safeText} />
+          <AppText variant="label" color={c.safeText} style={styles.flex}>
+            {t('verdict.guardianTold', { name: guardian.name })}
+          </AppText>
+        </View>
+      ) : null}
+
       {/* 4. Details, folded away. */}
       <Pressable testID="verdict-details" accessibilityRole="button" accessibilityState={{ expanded: details }} onPress={() => setDetails((v) => !v)} style={styles.detailsToggle}>
-        <Ionicons name="document-text-outline" size={20} color={c.textMuted} />
-        <AppText variant="bodyStrong" style={styles.flex}>
+        <Ionicons name="document-text-outline" size={18} color={c.textMuted} />
+        <AppText variant="label" color={c.textMuted} style={styles.flex}>
           {t(details ? 'verdict.hideDetails' : 'verdict.details')}
         </AppText>
-        <Ionicons name={details ? 'chevron-up' : 'chevron-down'} size={20} color={c.textMuted} />
+        <Ionicons name={details ? 'chevron-up' : 'chevron-down'} size={18} color={c.textMuted} />
       </Pressable>
 
       {details ? (
-        <View style={styles.details}>
+        <Animated.View entering={FadeIn.duration(180)} style={styles.details}>
           <View style={styles.message}>
             <AppText variant="caption" color={c.textMuted}>
               {check.sender ? t('verdict.from', { sender: maskPhone(check.sender) }) : t(`source.${check.source}` as StringKey)} · {dayAndTime(check.createdAt)}
@@ -313,9 +339,14 @@ export default function VerdictScreen() {
 
           {risky && stage > 0 ? (
             <View style={styles.section}>
-              <AppText variant="overline" color={c.textMuted}>
-                {t('verdict.killchain')}
-              </AppText>
+              <View>
+                <AppText variant="overline" color={c.textMuted}>
+                  {t('verdict.killchain')}
+                </AppText>
+                <AppText variant="caption" color={c.textFaint}>
+                  {t('verdict.killchain.sub')}
+                </AppText>
+              </View>
               <KillChainMeter stage={stage} evidence={evidence} tone={look.fill} />
             </View>
           ) : null}
@@ -348,7 +379,7 @@ export default function VerdictScreen() {
             })}
             <Pill label={t('verdict.engine', { ms: check.latencyMs, engine: response.engine ?? 'on-device' })} color={c.textMuted} soft={c.surface2} icon="hardware-chip-outline" />
           </View>
-        </View>
+        </Animated.View>
       ) : null}
     </Sheet>
   );
@@ -356,21 +387,28 @@ export default function VerdictScreen() {
 
 const useStyles = makeStyles(({ c }) => ({
   flex: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  badge: { width: 60, height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerText: { flex: 1, gap: 2 },
-  verdictLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, borderRadius: radius.md },
+  band: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.lg + 2, gap: spacing.sm },
+  bandTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  bandIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  score: { flexDirection: 'row', alignItems: 'baseline', gap: 2, paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.sm, backgroundColor: 'rgba(0,0,0,0.18)' },
+  scoreValue: { fontVariant: ['tabular-nums'] },
+  close: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.18)', alignItems: 'center', justifyContent: 'center' },
+  bandSub: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 },
+  section: { gap: spacing.sm },
+  explanation: { lineHeight: 26 },
   notice: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm + 2, padding: spacing.md + 2, borderRadius: radius.md },
-  section: { gap: spacing.sm + 2 },
-  reasons: { backgroundColor: c.surface2, borderRadius: radius.lg, paddingHorizontal: spacing.md + 2 },
-  reason: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.md },
-  reasonDivider: { borderTopWidth: 1, borderTopColor: c.border },
-  reasonDot: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  reasonNumber: { fontWeight: '800', lineHeight: 16 },
-  more: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: c.border },
-  todo: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  todoNumber: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  detailsToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 2, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, borderRadius: radius.md, backgroundColor: c.surface2, minHeight: 52 },
+  signs: { borderRadius: radius.lg, borderWidth: 1, borderColor: c.border, overflow: 'hidden' },
+  sign: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md + 2 },
+  divided: { borderTopWidth: 1, borderTopColor: c.border },
+  signMark: { width: 24, height: 24, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  more: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: spacing.md, paddingHorizontal: spacing.md + 2 },
+  steps: { gap: spacing.sm },
+  step: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: c.surface2 },
+  stepNumber: { width: 26, height: 26, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  stepNumberText: { fontWeight: '800', lineHeight: 16 },
+  realLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
+  told: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  detailsToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: c.border },
   details: { gap: spacing.lg },
   message: { gap: spacing.xs + 2, padding: spacing.md + 2, borderRadius: radius.md, borderTopLeftRadius: 6, backgroundColor: c.surface2, borderWidth: 1, borderColor: c.border },
   layer: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -381,10 +419,10 @@ const useStyles = makeStyles(({ c }) => ({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    minHeight: 66,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: 4,
+    gap: 3,
+    minHeight: 58,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.xs,
     borderRadius: radius.md,
     backgroundColor: c.surface2,
     borderWidth: 1,
@@ -392,5 +430,5 @@ const useStyles = makeStyles(({ c }) => ({
   },
   tilePressed: { backgroundColor: c.surface3, transform: [{ scale: 0.96 }] },
   tileDisabled: { opacity: 0.5 },
-  tileLabel: { fontWeight: '600' },
+  tileLabel: { fontWeight: '700' },
 }));

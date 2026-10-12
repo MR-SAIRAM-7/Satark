@@ -12,6 +12,7 @@ import { seedCommunityIntel } from '@/features/demo/seed';
 import { syncFamilyAlerts } from '@/features/family/sync';
 import { tNow } from '@/i18n';
 import { refreshSession } from '@/services/api/http';
+import { wakeServer } from '@/services/health';
 import { SatarkNative } from '@/services/native';
 import { initNotifications, onNotificationTap } from '@/services/notifications';
 import { connectRealtime } from '@/services/realtime';
@@ -33,6 +34,8 @@ export function AppBridge() {
 
   // One-time start-up work.
   useEffect(() => {
+    // A sleeping free-plan server takes up to a minute to wake: start that now, not at the first scam.
+    wakeServer();
     if (Object.keys(useIntel.getState().iocs).length === 0) seedCommunityIntel();
     syncCommunity();
     registerBackgroundSync();

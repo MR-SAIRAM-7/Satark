@@ -1,13 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { Verdict } from '@satark/shared';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { CheckRow } from '@/components/CheckRow';
 import { AppText } from '@/components/ui/AppText';
 import { Card } from '@/components/ui/Card';
-import { EmptyState, SectionHeader, Segmented } from '@/components/ui/primitives';
+import { tapFeedback } from '@/components/ui/Button';
+import { EmptyState, SectionHeader } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { useT, type StringKey } from '@/i18n';
 import { AlertRow } from '@/screens/home/GuardianHome';
@@ -19,6 +20,44 @@ import { timeAgo } from '@/utils/time';
 
 type Filter = 'all' | Verdict;
 const FILTERS: Filter[] = ['all', 'scam', 'suspicious', 'safe'];
+
+/**
+ * The filter is also the summary: four tiles, each with its count, so the
+ * tab answers "how many scams?" before anything is tapped.
+ */
+function FilterTiles({ value, onChange, counts }: { value: Filter; onChange: (next: Filter) => void; counts: Record<Filter, number> }) {
+  const t = useT();
+  const styles = useStyles();
+  const { c, verdict: looks } = useTheme();
+  return (
+    <View style={styles.tiles} accessibilityRole="tablist" testID="activity-filter">
+      {FILTERS.map((filter) => {
+        const selected = filter === value;
+        const tone = filter === 'all' ? { text: c.accentText, soft: c.accentSoft, fill: c.accent } : looks[filter];
+        const label = t(`activity.${filter}` as StringKey);
+        return (
+          <Pressable
+            key={filter}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            accessibilityLabel={`${label}: ${counts[filter]}`}
+            onPress={() => {
+              tapFeedback();
+              onChange(filter);
+            }}
+            style={({ pressed }) => [styles.tile, selected && { backgroundColor: tone.soft, borderColor: tone.fill }, pressed && styles.tilePressed]}>
+            <AppText variant="heading" color={filter === 'all' && !selected ? c.text : tone.text} style={styles.tileCount}>
+              {counts[filter]}
+            </AppText>
+            <AppText variant="caption" color={selected ? tone.text : c.textMuted} numberOfLines={1} style={styles.tileLabel}>
+              {label}
+            </AppText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 
 /** Everything Satark has checked, blocked or told the family about. */
 export default function ActivityTab() {
@@ -36,6 +75,8 @@ export default function ActivityTab() {
   useEffect(() => () => markAllRead(), [markAllRead]);
 
   const visible = filter === 'all' ? checks : checks.filter((c) => c.response.verdict === filter);
+  const counts: Record<Filter, number> = { all: checks.length, scam: 0, suspicious: 0, safe: 0 };
+  for (const check of checks) counts[check.response.verdict] += 1;
   const isGuardian = role === 'guardian';
 
   return (
@@ -49,12 +90,7 @@ export default function ActivityTab() {
         </View>
       ) : null}
 
-      <Segmented
-        testID="activity-filter"
-        value={filter}
-        onChange={setFilter}
-        options={FILTERS.map((f) => ({ value: f, label: t(`activity.${f}` as StringKey) }))}
-      />
+      <FilterTiles value={filter} onChange={setFilter} counts={counts} />
 
       {visible.length === 0 ? (
         <EmptyState icon="pulse-outline" title={t('activity.empty')} body={t('home.none.sub')} />
@@ -97,6 +133,20 @@ export default function ActivityTab() {
 
 const useStyles = makeStyles(({ c }) => ({
   flex: { flex: 1 },
+  tiles: { flexDirection: 'row', gap: spacing.sm },
+  tile: {
+    flex: 1,
+    gap: 2,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm + 2,
+    borderRadius: radius.md,
+    backgroundColor: c.surface,
+    borderWidth: 1.5,
+    borderColor: c.border,
+  },
+  tilePressed: { transform: [{ scale: 0.96 }] },
+  tileCount: { fontVariant: ['tabular-nums'] },
+  tileLabel: { fontWeight: '700' },
   list: { gap: spacing.sm + 2 },
   call: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, paddingHorizontal: spacing.lg },
   divider: { borderBottomWidth: 1, borderBottomColor: c.border },

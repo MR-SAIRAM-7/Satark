@@ -10,6 +10,8 @@ export interface SheetProps {
   onClose: () => void;
   /** Sticky actions under the scrolling content. */
   footer?: React.ReactNode;
+  /** Edge-to-edge band above the content (e.g. a verdict colour); replaces the drag handle. */
+  header?: React.ReactNode;
   testID?: string;
 }
 
@@ -17,7 +19,7 @@ export interface SheetProps {
  * Pop-up sheet over the current screen: a bottom sheet on a phone, a centred
  * card on a wide screen. Content scrolls; the actions stay put.
  */
-export function Sheet({ children, onClose, footer, testID }: SheetProps) {
+export function Sheet({ children, onClose, footer, header, testID }: SheetProps) {
   const styles = useStyles();
   const { c, shadow } = useTheme();
   const insets = useSafeAreaInsets();
@@ -38,7 +40,7 @@ export function Sheet({ children, onClose, footer, testID }: SheetProps) {
           { maxHeight: height * (wide ? 0.86 : 0.92) },
         ]}
         accessibilityViewIsModal>
-        {wide ? null : <View style={styles.handle} />}
+        {header ?? (wide ? null : <View style={styles.handle} />)}
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} bounces={false}>
           {children}
         </ScrollView>

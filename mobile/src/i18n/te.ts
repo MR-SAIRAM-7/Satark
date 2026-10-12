@@ -373,6 +373,7 @@ export const te: Partial<Record<StringKey, string>> = {
   'start.useThis': 'దీనితో ఫిర్యాదు చేయండి',
   'start.orDescribe': 'లేదా మీరే వివరించండి',
   'start.noAlerts': 'ఈ ఫోన్‌లో ఇంకా ఏ మోసమూ పట్టుబడలేదు. ఏం జరిగిందో కింద రాయండి, సతర్క్ ఫిర్యాదు రాస్తుంది.',
+  'start.describe': 'ఏం జరిగిందో చెప్పండి',
   'start.type': 'ఏ రకమైన మోసం?',
   'start.other': 'ఇంకేదైనా',
   'start.story': 'వారు ఏం చెప్పారు లేదా పంపారు?',

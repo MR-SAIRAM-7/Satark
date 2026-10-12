@@ -21,8 +21,10 @@ import { useSettings } from '@/store/settings';
 import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
 import { greetingKey } from '@/utils/time';
 
-function QuickAction({ icon, label, color, soft, onPress, testID }: { icon: IconName; label: string; color: string; soft: string; onPress: () => void; testID?: string }) {
+/** One of three ways to reach a real person, laid side by side in a single strip. */
+function QuickAction({ icon, label, color, soft, onPress, first, testID }: { icon: IconName; label: string; color: string; soft: string; onPress: () => void; first?: boolean; testID?: string }) {
   const styles = useStyles();
+  const { c } = useTheme();
   return (
     <Pressable
       testID={testID}
@@ -32,29 +34,14 @@ function QuickAction({ icon, label, color, soft, onPress, testID }: { icon: Icon
         tapFeedback();
         onPress();
       }}
-      style={({ pressed }) => [styles.quick, pressed && styles.pressed]}>
+      style={({ pressed }) => [styles.quick, !first && styles.quickDivider, pressed && { backgroundColor: c.surface2 }]}>
       <View style={[styles.quickIcon, { backgroundColor: soft }]}>
-        <Ionicons name={icon} size={26} color={color} />
+        <Ionicons name={icon} size={24} color={color} />
       </View>
-      <AppText variant="label" numberOfLines={2} style={styles.quickLabel}>
+      <AppText variant="label" center numberOfLines={2} style={styles.quickLabel}>
         {label}
       </AppText>
     </Pressable>
-  );
-}
-
-function Stat({ value, label, color }: { value: number; label: string; color: string }) {
-  const styles = useStyles();
-  const { c } = useTheme();
-  return (
-    <View style={styles.stat}>
-      <AppText variant="numeral" color={color}>
-        {value}
-      </AppText>
-      <AppText variant="caption" color={c.textMuted} numberOfLines={2}>
-        {label}
-      </AppText>
-    </View>
   );
 }
 
@@ -103,6 +90,11 @@ export function ElderHome() {
             { label: t('home.chip.calls'), on: protection.status.callScreening || simulated },
             { label: t('home.chip.family'), on: Boolean(guardian) },
           ]}
+          stats={[
+            { value: checks.length, label: t('home.stats.checked') },
+            { value: scamsStopped, label: t('home.stats.stopped'), color: '#FF8A7F' },
+            { value: blockedCalls, label: t('home.stats.blocked'), color: '#FFC266' },
+          ]}
         />
       </Animated.View>
 
@@ -138,6 +130,7 @@ export function ElderHome() {
       <Animated.View entering={FadeInDown.delay(140).duration(380)} style={styles.quickRow}>
         {guardian ? (
           <QuickAction
+            first
             icon="call"
             label={t('home.callFamily', { name: guardian.name })}
             color={c.safeText}
@@ -146,6 +139,7 @@ export function ElderHome() {
           />
         ) : null}
         <QuickAction
+          first={!guardian}
           icon="alert-circle"
           label={t('home.call1930')}
           color={c.dangerText}
@@ -153,14 +147,6 @@ export function ElderHome() {
           onPress={() => dial(HELPLINE_1930.number, { name: HELPLINE_1930.name })}
         />
         <QuickAction icon="business" label={t('home.realNumbers')} color={c.accentText} soft={c.accentSoft} onPress={() => router.push('/directory')} />
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.delay(210).duration(380)} style={styles.stats}>
-        <Stat value={checks.length} label={t('home.stats.checked')} color={c.text} />
-        <View style={styles.statDivider} />
-        <Stat value={scamsStopped} label={t('home.stats.stopped')} color={c.dangerText} />
-        <View style={styles.statDivider} />
-        <Stat value={blockedCalls} label={t('home.stats.blocked')} color={c.warnText} />
       </Animated.View>
 
       <SectionHeader title={t('home.recent')} action={checks.length > 3 ? t('common.seeAll') : undefined} onAction={() => router.push('/activity')} />
@@ -185,33 +171,18 @@ const useStyles = makeStyles(({ c, shadow }) => ({
   ask: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, padding: spacing.lg + 4, borderRadius: radius.xl, minHeight: 108 },
   askIcon: { width: 58, height: 58, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   askArrow: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
-  quickRow: { flexDirection: 'row', gap: spacing.md },
-  quick: {
-    flex: 1,
-    gap: spacing.md,
-    padding: spacing.md + 2,
-    minHeight: 118,
-    backgroundColor: c.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.border,
-    justifyContent: 'space-between',
-    ...shadow.card,
-  },
-  quickIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  quickLabel: { fontWeight: '600' },
-  stats: {
+  quickRow: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.sm,
     backgroundColor: c.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: c.border,
+    overflow: 'hidden',
     ...shadow.card,
   },
-  stat: { flex: 1, paddingHorizontal: spacing.md, gap: 2 },
-  statDivider: { width: 1, backgroundColor: c.border },
+  quick: { flex: 1, alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.lg, paddingHorizontal: spacing.xs },
+  quickDivider: { borderLeftWidth: 1, borderLeftColor: c.border },
+  quickIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  quickLabel: { fontWeight: '700' },
   list: { gap: spacing.sm + 2 },
 }));

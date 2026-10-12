@@ -63,6 +63,15 @@ export function PairingCode() {
     setBusy(false);
   };
 
+  // Opening the screen is the request: a fresh code appears at once, unless one is still running.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (asked.current || live) return;
+    asked.current = true;
+    void make();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <View style={styles.card}>
       {live ? (

@@ -175,7 +175,7 @@ const useStyles = makeStyles(({ c }) => ({
   glow: { top: -130, right: -110 },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   avatar: { width: 68, height: 68, borderRadius: 34, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.08)' },
-  avatarStatus: { position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#0E1638' },
+  avatarStatus: { position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c.ink[1] },
   tiles: { flexDirection: 'row', gap: spacing.md },
   tile: { flex: 1, gap: spacing.sm, minHeight: 132, justifyContent: 'space-between' },
   ringText: { fontWeight: '800' },

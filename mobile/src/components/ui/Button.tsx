@@ -49,9 +49,11 @@ export function tapFeedback() {
   if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => undefined);
 }
 
-const HEIGHT = { sm: 44, md: TOUCH - 4, lg: 62 } as const;
+const HEIGHT = { sm: 44, md: TOUCH - 4, lg: 60 } as const;
+/** Soft rounded rectangles, not capsules: they read as a calm, solid control rather than a long pill. */
+const CORNER = { sm: 14, md: 16, lg: 18 } as const;
 
-/** Pill button. Every press scales down slightly and ticks the haptics, so a tap always feels answered. */
+/** Every press scales down slightly and ticks the haptics, so a tap always feels answered. */
 export function Button({
   label,
   onPress,
@@ -82,7 +84,7 @@ export function Button({
       }}
       style={({ pressed }) => [
         styles.base,
-        { minHeight: HEIGHT[size], paddingHorizontal: size === 'sm' ? spacing.lg : spacing.xl },
+        { minHeight: HEIGHT[size], borderRadius: CORNER[size], paddingHorizontal: size === 'sm' ? spacing.lg : spacing.xl },
         { backgroundColor: pressed ? t.pressed : t.bg, borderColor: t.border ?? 'transparent' },
         pressed && styles.pressed,
         inactive && styles.inactive,
@@ -152,7 +154,6 @@ export function IconButton({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 999,
     borderWidth: 1,
     paddingVertical: spacing.sm,
     flexDirection: 'row',

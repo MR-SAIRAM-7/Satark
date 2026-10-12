@@ -6,11 +6,13 @@ import { useSettings } from '@/store/settings';
 /**
  * Satark's design system: "Night" and "Day".
  *
- * One signature colour, Satark Cobalt, on calm near-neutral surfaces; status
- * colours that mean the same thing everywhere (green safe, saffron careful,
- * vermilion scam) and are never used for decoration. Every text/background
- * pair below meets WCAG AA (4.5:1) for body text, checked with a script.
- * Elder-first: large type, 56 dp touch targets, no meaning by colour alone.
+ * One signature colour, Peacock (the deep blue-green of India's national
+ * bird), on warm paper-and-ink neutrals rather than the usual cold greys;
+ * status colours that mean the same thing everywhere (green safe, saffron
+ * careful, vermilion scam) and are never used for decoration. Every
+ * text/background pair below meets WCAG AA (4.5:1) for body text, checked
+ * with a script. Elder-first: large type, 56 dp touch targets, no meaning by
+ * colour alone.
  */
 export interface Palette {
   bg: string;
@@ -58,75 +60,75 @@ export interface Palette {
 }
 
 const day: Palette = {
-  bg: '#F2F3F7',
+  bg: '#F4F2EE',
   surface: '#FFFFFF',
-  surface2: '#EDEFF4',
-  surface3: '#E2E5EC',
-  border: '#E3E6EE',
-  borderStrong: '#CCD2DD',
+  surface2: '#EFECE6',
+  surface3: '#E4E0D8',
+  border: '#E7E3DB',
+  borderStrong: '#D3CDC2',
 
-  text: '#0E1117',
-  textMuted: '#4F5869',
-  textFaint: '#6F788A',
+  text: '#14130F',
+  textMuted: '#5D584F',
+  textFaint: '#6B655B',
   onFill: '#FFFFFF',
 
-  accent: '#2E5BFF',
-  accentPressed: '#1F45E0',
-  accentText: '#2449E6',
-  accentSoft: '#E8EDFF',
-  glacier: '#12B3D6',
+  accent: '#006A84',
+  accentPressed: '#00566B',
+  accentText: '#00627A',
+  accentSoft: '#DDEFF2',
+  glacier: '#E3A82B',
 
-  safe: '#08804F',
-  safeText: '#05683F',
-  safeSoft: '#E3F5EC',
-  warn: '#B05A00',
-  warnText: '#8A4500',
-  warnSoft: '#FFF1DC',
-  danger: '#D92C20',
-  dangerText: '#B0241A',
-  dangerSoft: '#FDEAE8',
+  safe: '#0F7B4B',
+  safeText: '#0A6640',
+  safeSoft: '#E1F3E8',
+  warn: '#A85A00',
+  warnText: '#8A4600',
+  warnSoft: '#FDF0DA',
+  danger: '#CF2E26',
+  dangerText: '#AE231C',
+  dangerSoft: '#FBE8E5',
 
   whatsapp: '#13894A',
   whatsappSoft: '#E3F6EA',
-  overlay: 'rgba(9, 12, 20, 0.46)',
+  overlay: 'rgba(20, 18, 14, 0.5)',
   chrome: 'rgba(255, 255, 255, 0.94)',
-  ink: ['#13204A', '#0A1029'],
+  ink: ['#0E4152', '#061A22'],
 };
 
 const night: Palette = {
-  bg: '#0A0B0F',
-  surface: '#15171D',
-  surface2: '#1D2028',
-  surface3: '#272B35',
-  border: '#242833',
-  borderStrong: '#343A48',
+  bg: '#0B0F11',
+  surface: '#13191C',
+  surface2: '#1A2226',
+  surface3: '#232D32',
+  border: '#1F292E',
+  borderStrong: '#2F3C42',
 
-  text: '#F3F5F9',
-  textMuted: '#A4ACBB',
-  textFaint: '#737B8C',
+  text: '#EEF3F2',
+  textMuted: '#9CAAAD',
+  textFaint: '#7F8F93',
   onFill: '#FFFFFF',
 
-  accent: '#3F5EFF',
-  accentPressed: '#3350E8',
-  accentText: '#91A5FF',
-  accentSoft: '#1B2246',
-  glacier: '#38C8E8',
+  accent: '#0A7F9C',
+  accentPressed: '#086B84',
+  accentText: '#57D0EA',
+  accentSoft: '#0F2A32',
+  glacier: '#F2B544',
 
-  safe: '#0B8553',
-  safeText: '#4BDB9E',
-  safeSoft: '#10291F',
+  safe: '#0C8452',
+  safeText: '#45D69A',
+  safeSoft: '#0E261C',
   warn: '#B05A00',
   warnText: '#FFB547',
-  warnSoft: '#2D2112',
-  danger: '#D7302A',
-  dangerText: '#FF7B70',
-  dangerSoft: '#32181A',
+  warnSoft: '#2B2012',
+  danger: '#D2322B',
+  dangerText: '#FF7D72',
+  dangerSoft: '#2E1718',
 
   whatsapp: '#1A9E58',
   whatsappSoft: '#0F2A1C',
-  overlay: 'rgba(0, 0, 0, 0.62)',
-  chrome: 'rgba(25, 28, 36, 0.96)',
-  ink: ['#15204A', '#090D20'],
+  overlay: 'rgba(0, 0, 0, 0.66)',
+  chrome: 'rgba(19, 25, 28, 0.95)',
+  ink: ['#10475A', '#05141A'],
 };
 
 export type Scheme = 'light' | 'dark';
@@ -161,9 +163,9 @@ function build(scheme: Scheme, c: Palette): Theme {
     },
     // On dark surfaces depth comes from lighter fills and hairlines, not shadows.
     shadow: {
-      card: { boxShadow: dark ? 'none' : '0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 18px rgba(16, 24, 40, 0.05)' },
-      raised: { boxShadow: dark ? '0 12px 32px rgba(0, 0, 0, 0.45)' : '0 14px 34px rgba(30, 50, 120, 0.16)' },
-      float: { boxShadow: dark ? '0 10px 30px rgba(0, 0, 0, 0.55)' : '0 10px 30px rgba(16, 24, 40, 0.14)' },
+      card: { boxShadow: dark ? 'none' : '0 1px 1px rgba(40, 30, 10, 0.04), 0 8px 24px rgba(40, 30, 10, 0.05)' },
+      raised: { boxShadow: dark ? '0 16px 40px rgba(0, 0, 0, 0.5)' : '0 18px 40px rgba(6, 40, 52, 0.18)' },
+      float: { boxShadow: dark ? '0 12px 34px rgba(0, 0, 0, 0.6)' : '0 12px 34px rgba(40, 30, 10, 0.14)' },
     },
   };
 }
@@ -194,7 +196,7 @@ export function makeStyles<T extends AnyStyles>(factory: (theme: Theme) => T): (
 }
 
 export const spacing = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 } as const;
-export const radius = { xs: 8, sm: 12, md: 16, lg: 22, xl: 28, xxl: 34, pill: 999 } as const;
+export const radius = { xs: 8, sm: 12, md: 16, lg: 20, xl: 24, xxl: 30, pill: 999 } as const;
 
 /**
  * Type scale. Headings use Bricolage Grotesque for English; Telugu, Hindi and

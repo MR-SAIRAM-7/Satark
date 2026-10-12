@@ -15,7 +15,9 @@ import { useSettings } from '@/store/settings';
  */
 
 /** Bulbul must answer within this budget or the phone's voice takes over. */
-const CLOUD_BUDGET_MS = 1800;
+const CLOUD_BUDGET_MS = 3000;
+/** With no voice of its own for the language, the phone would say nothing: wait longer for Sarvam. */
+const CLOUD_ONLY_BUDGET_MS = 9000;
 
 /** Which voice spoke: Sarvam's, the phone's own, or none (no voice for this language here). */
 export type VoiceEngine = 'cloud' | 'device' | 'none';
@@ -127,7 +129,9 @@ export async function speak(text: string, options: SpeakOptions = {}): Promise<V
   const mine = ticket;
 
   try {
-    const uri = await cloudAudio(text, lang, options.budgetMs ?? CLOUD_BUDGET_MS);
+    const budget = options.budgetMs ?? ((await deviceVoiceFor(lang)) ? CLOUD_BUDGET_MS : CLOUD_ONLY_BUDGET_MS);
+    if (mine !== ticket) return 'none';
+    const uri = await cloudAudio(text, lang, budget);
     if (mine !== ticket) return 'none'; // a newer warning replaced this one
     if (uri) {
       play(uri);

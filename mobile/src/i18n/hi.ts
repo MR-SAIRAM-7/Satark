@@ -373,6 +373,7 @@ export const hi: Partial<Record<StringKey, string>> = {
   'start.useThis': 'इससे शिकायत बनाएं',
   'start.orDescribe': 'या खुद बताइए',
   'start.noAlerts': 'इस फ़ोन पर अभी तक कोई ठगी नहीं पकड़ी गई। नीचे बताइए क्या हुआ, सतर्क शिकायत लिख देगा।',
+  'start.describe': 'बताइए क्या हुआ',
   'start.type': 'किस तरह की ठगी?',
   'start.other': 'कुछ और',
   'start.story': 'उन्होंने क्या कहा या भेजा?',

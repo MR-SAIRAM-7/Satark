@@ -10,7 +10,7 @@ import { Screen } from '@/components/ui/Screen';
 import { hasBackend, hasDirectLlm } from '@/config/env';
 import { runScenario, useDemo } from '@/features/demo/runner';
 import { ROUNDS, SCENARIOS, type Scenario } from '@/features/demo/scenarios';
-import { loadSampleHistory, resetDemoData } from '@/features/demo/seed';
+import { loadSampleHistory } from '@/features/demo/seed';
 import { useT } from '@/i18n';
 import { useUi } from '@/store/ui';
 import { makeStyles, radius, spacing, useTheme } from '@/theme/tokens';
@@ -67,25 +67,14 @@ export default function DemoScreen() {
   const styles = useStyles();
   const { c } = useTheme();
   const showToast = useUi((s) => s.showToast);
-  const [busy, setBusy] = useState<'history' | 'reset' | null>(null);
-  const [confirmReset, setConfirmReset] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const withBusy = async (kind: 'history' | 'reset', fn: () => Promise<void>, message: string) => {
-    setBusy(kind);
-    await fn();
-    setBusy(null);
-    showToast(message, 'safe');
-  };
-
-  const reset = () => {
-    // Two taps, so the practice history is never wiped by accident.
-    if (!confirmReset) {
-      setConfirmReset(true);
-      setTimeout(() => setConfirmReset(false), 4000);
-      return;
-    }
-    setConfirmReset(false);
-    void withBusy('reset', resetDemoData, 'Demo data reset');
+  // There is deliberately no "erase everything" here: one stray tap must never wipe a family's history.
+  const loadHistory = async () => {
+    setBusy(true);
+    await loadSampleHistory();
+    setBusy(false);
+    showToast('Sample history loaded', 'safe');
   };
 
   const others = SCENARIOS.filter((s) => !s.round);
@@ -125,25 +114,7 @@ export default function DemoScreen() {
 
       <View style={styles.group}>
         <SectionHeader title="Demo data" />
-        <View style={styles.dataRow}>
-          <Button
-            label="Load sample history"
-            icon="time-outline"
-            variant="secondary"
-            loading={busy === 'history'}
-            style={styles.flex}
-            onPress={() => withBusy('history', loadSampleHistory, 'Sample history loaded')}
-          />
-          <Button
-            testID="demo-reset"
-            label={confirmReset ? 'Tap again to reset' : 'Reset demo'}
-            icon="refresh"
-            variant={confirmReset ? 'danger' : 'secondary'}
-            loading={busy === 'reset'}
-            style={styles.flex}
-            onPress={reset}
-          />
-        </View>
+        <Button label="Load sample history" icon="time-outline" variant="secondary" loading={busy} onPress={loadHistory} />
       </View>
     </Screen>
   );
@@ -162,5 +133,4 @@ const useStyles = makeStyles(({ c }) => ({
   steps: { flexDirection: 'row', gap: 4, marginTop: 6 },
   stepDot: { width: 18, height: 4, borderRadius: 2, backgroundColor: c.surface3 },
   play: { width: 40, height: 40, borderRadius: 20, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' },
-  dataRow: { flexDirection: 'row', gap: spacing.sm },
 }));

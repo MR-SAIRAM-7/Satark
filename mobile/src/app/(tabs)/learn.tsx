@@ -1,12 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AppText } from '@/components/ui/AppText';
 import { Glow } from '@/components/ui/Glow';
-import { Button, IconButton, tapFeedback } from '@/components/ui/Button';
+import { Button, IconButton } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ListRow, Ring, SectionHeader } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
@@ -33,14 +33,8 @@ export default function LearnTab() {
   return (
     <Screen inTabs title={t('learn.title')} subtitle={t('learn.sub')}>
       <Animated.View entering={FadeInDown.duration(360)}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('learn.drills')}
-          onPress={() => {
-            tapFeedback();
-            router.push('/drill');
-          }}
-          style={({ pressed }) => [styles.heroWrap, shadow.raised, pressed && styles.pressed]}>
+        {/* The card is not itself a button: its own button starts the drill (a button inside a button is invalid). */}
+        <View style={[styles.heroWrap, shadow.raised]}>
           <LinearGradient colors={c.ink} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
             <Glow color="#3BE39A" size={300} opacity={0.26} style={styles.glow} />
             <View style={styles.heroTop}>
@@ -63,7 +57,7 @@ export default function LearnTab() {
             </View>
             <Button label={readiness === null ? t('learn.start') : t('drill.again')} icon="play" variant="onDark" size="lg" onPress={() => router.push('/drill')} />
           </LinearGradient>
-        </Pressable>
+        </View>
       </Animated.View>
 
       <Card padded={false}>
@@ -104,7 +98,6 @@ export default function LearnTab() {
 
 const useStyles = makeStyles(({ c }) => ({
   flex: { flex: 1 },
-  pressed: { transform: [{ scale: 0.985 }] },
   heroWrap: { borderRadius: radius.xxl },
   hero: { borderRadius: radius.xxl, padding: spacing.xl, gap: spacing.xl, overflow: 'hidden' },
   glow: { right: -100, top: -120 },
